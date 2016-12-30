@@ -3,9 +3,12 @@
 (defmulti generate-body (fn [conds num] (class (first conds))))
 (defmethod generate-body  clojure.lang.IPersistentVector [conds num]
   [(vec (rest (first conds)))])
-
 (defmethod generate-body  clojure.lang.ISeq [conds num]
-  (seq (concat (first conds) [(generate-body (rest conds) num)])))
+  (let [cond (first conds)
+        body (seq (concat cond [(generate-body (rest conds) num)]))]
+    (if (= (first cond) 'for)
+      `(apply concat ~body)
+      body)))
 
 (defn generate-rule-func [rulename source-fact source-rule conds num]
   (let [funcname (symbol (str (name rulename) "-" num))]

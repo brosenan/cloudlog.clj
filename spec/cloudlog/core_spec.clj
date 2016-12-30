@@ -14,7 +14,7 @@
 
 (describe "(--> name source conds* dest)"
           (it "defines a function that transforms its source to its target"
-              (should= [[2 1]] (do-in-private-ns
+              (should== [[2 1]] (do-in-private-ns
                                  (--> foobar
                                      [:test/foo x y]
                                      [(read-string "::bar") y x])
@@ -26,9 +26,16 @@
                                            [(read-string "::bar") y x])
                                       ((meta foobar-0) :source-fact))))
           (it "allows clojure forms to be used as guards"
-              (should= [[3]] (do-in-private-ns
+              (should== [[3]] (do-in-private-ns
                               (--> foobar
                                    [:test/foo X Y]
                                    (let [Z (+ X Y)])
                                    [(read-string "::bar") Z])
-                              (foobar-0 [1 2])))))
+                              (foobar-0 [1 2]))))
+          (it "allows iteration using for guards"
+              (should== [["hello"] ["world"]] (do-in-private-ns
+                                             (--> index
+                                                  [:test/doc Text]
+                                                  (for [Word (clojure.string/split Text #" ")])
+                                                  [(read-string "::index") Word])
+                                             (index-0 ["hello world"])))))
