@@ -13,11 +13,22 @@
       (finally (in-ns (symbol (str ~'old-ns)))))))
 
 (describe "(--> name source conds* dest)"
-          (it "expands to a do block"
-              (should= 'do (first (macroexpand '(--> foobar [:test/foo x y] [::bar y x])))))
           (it "defines a function that transforms its source to its target"
               (should= [[2 1]] (do-in-private-ns
                                  (--> foobar
                                      [:test/foo x y]
-                                     [::bar y x])
-                                 (foobar-0 [1 2])))))
+                                     [(read-string "::bar") y x])
+                                 (foobar-0 [1 2]))))
+          (it "attaches the name and arity of the source to the function"
+              (should= [:test/foo 2] (do-in-private-ns
+                                      (--> foobar
+                                           [:test/foo x y]
+                                           [(read-string "::bar") y x])
+                                      ((meta foobar-0) :source-fact))))
+          (it "allows clojure forms to be used as guards"
+              (should= [[3]] (do-in-private-ns
+                              (--> foobar
+                                   [:test/foo X Y]
+                                   (let [Z (+ X Y)])
+                                   [(read-string "::bar") Z])
+                              (foobar-0 [1 2])))))
