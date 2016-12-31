@@ -2,7 +2,11 @@
 
 (defmulti generate-body (fn [conds num] (class (first conds))))
 (defmethod generate-body  clojure.lang.IPersistentVector [conds num]
-  [(vec (rest (first conds)))])
+  (let [target (first conds)
+        target-name (eval (first target))]
+    (if (= (namespace target-name) (str *ns*))
+      [(vec (rest target))]
+      (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*))))))
 (defmethod generate-body  clojure.lang.ISeq [conds num]
   (let [cond (first conds)
         body (seq (concat cond [(generate-body (rest conds) num)]))]
