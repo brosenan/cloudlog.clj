@@ -8,11 +8,11 @@
   (let [target (first conds)
         target-name (eval (first target))]
     (if (= (count conds) 1)
-      (if (not= (namespace target-name) (str *ns*))
-        (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*)))
-        [[(vec (rest target))] {:target-fact [(first target) 2]}])
+      (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*)))
       [[] {:continuation `(fn [~'x] ~'x)}])))
-
+;(if (not= (namespace target-name) (str *ns*))
+;        (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*)))
+;        [[(vec (rest target))] {:target-fact [(first target) 2]}])
 (defmethod process-conds  clojure.lang.ISeq [conds]
   (let [cond (first conds)
         [body meta] (process-conds (rest conds) )

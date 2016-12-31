@@ -1,5 +1,2 @@
 language: clojure
 script: lein spec
-jdk:
-  - oraclejdk8
-  - oraclejdk7
