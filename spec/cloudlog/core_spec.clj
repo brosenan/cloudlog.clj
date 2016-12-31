@@ -31,19 +31,19 @@
           (it "allows clojure forms to be used as guards"
               (should== [[3]] (do-in-private-ns
                               (--> foobar
-                                   [:test/foo X Y]
-                                   (let [Z (+ X Y)])
-                                   [(rs "::bar") Z])
+                                   [:test/foo x y]
+                                   (let [z (+ x y)])
+                                   [(rs "::bar") z])
                               (foobar [1 2]))))
           (it "allows iteration using for guards"
               (should== ["hello" "world"] (do-in-private-ns
                                              (def stop-words #{"a" "is" "to" "the"})
                                              (--> index
-                                                  [:test/doc Text]
-                                                  (for [Word (clojure.string/split Text #"[,!.? ]+")])
-                                                  (let [Word (clojure.string/lower-case Word)])
-                                                  (when-not (contains? stop-words Word))
-                                                  [(rs "::index") Word Text])
+                                                  [:test/doc text]
+                                                  (for [word (clojure.string/split text #"[,!.? ]+")])
+                                                  (let [word (clojure.string/lower-case word)])
+                                                  (when-not (contains? stop-words word))
+                                                  [(rs "::index") word text])
                                              ; Extract the keys from the index
                                              (map first (index ["Hello, to the  World!"])))))
           (it "disallows output that is not a keyword in the current namespace"
@@ -60,10 +60,25 @@
                                   (let [m (meta foobar)
                                         [n arity] (m :target-fact)]
                                     [(name n) arity]))))
-          (it "defines an additional function for fact conditions"
-              (comment (should= "I'm here!" (do-in-private-ns
-                                             (--> foobar
-                                                  [:test/foo X Y]
-                                                  [:test/bar Y Z]
-                                                  [(rs "::baz") Y Z])
-                                             (foobar))))))
+          (it "returns an empty result when the argument does not match the source"
+              (should-be empty? (do-in-private-ns
+                                 (--> foobar
+                                      [:test/foo 1 X]
+                                      [(rs "::bar") X 1])
+                                 (foobar [2 3]))))
+          (it "attaches a continuation function in case of a fact condition"
+              (should-be fn? (do-in-private-ns
+                               (--> foobar
+                                    [:test/foo X Y]
+                                    [:test/bar Y X]
+                                    [(rs "::baz") Y X])
+                               ((meta foobar) :continuation))))
+          (it "returns input acceptable by the continuation"
+              (do-in-private-ns
+               (--> foobar
+                    [:test/foo X Y]
+                    [:test/bar Y X]
+                    [(rs "::baz") Y X])
+               (let [cont ((meta foobar) :continuation)
+                     cont-val (foobar [1 2])]
+                 (cont cont-val)))))
