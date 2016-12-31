@@ -18,13 +18,12 @@
       [`(apply concat ~body)]
       [body meta])))
 
-(defn generate-rule-func [rulename source-fact source-rule conds]
-  (let [funcname (symbol (name rulename))
-        [body meta] (process-conds conds)
+(defn generate-rule-func [source-fact conds]
+  (let [[body meta] (process-conds conds)
         meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})]
-    `(do (def ~funcname ~(with-meta
-                           `(fn [[~@(rest source-fact)]]
-                              ~body) meta)))))
+    (with-meta
+      `(fn [[~@(rest source-fact)]]
+         ~body) meta)))
 
 (defmacro --> [rulename source-fact & conds]
-  (generate-rule-func rulename source-fact nil conds))
+    `(def ~rulename ~(generate-rule-func source-fact conds)))
