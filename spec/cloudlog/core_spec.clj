@@ -21,20 +21,20 @@
                                  (--> foobar
                                      [:test/foo x y]
                                      [(rs "::bar") y x]) ; we use (read-string) to ensure ::bar gets the test namespace
-                                 (foobar-0 [1 2]))))
+                                 (foobar [1 2]))))
           (it "attaches the name and arity of the source to the function"
               (should= [:test/foo 2] (do-in-private-ns
                                       (--> foobar
                                            [:test/foo x y]
                                            [(rs "::bar") y x])
-                                      ((meta foobar-0) :source-fact))))
+                                      ((meta foobar) :source-fact))))
           (it "allows clojure forms to be used as guards"
               (should== [[3]] (do-in-private-ns
                               (--> foobar
                                    [:test/foo X Y]
                                    (let [Z (+ X Y)])
                                    [(rs "::bar") Z])
-                              (foobar-0 [1 2]))))
+                              (foobar [1 2]))))
           (it "allows iteration using for guards"
               (should== ["hello" "world"] (do-in-private-ns
                                              (def stop-words #{"a" "is" "to" "the"})
@@ -45,9 +45,25 @@
                                                   (when-not (contains? stop-words Word))
                                                   [(rs "::index") Word Text])
                                              ; Extract the keys from the index
-                                             (map first (index-0 ["Hello, to the  World!"])))))
+                                             (map first (index ["Hello, to the  World!"])))))
           (it "disallows output that is not a keyword in the current namespace"
               (should-throw Exception "keyword :test/bar is not in the rule's namespace cloudlog.core-spec"
                             (macroexpand '(--> foobar
                                                [:test/foo X Y]
-                                               [:test/bar Y X])))))
+                                               [:test/bar Y X]))))
+          (it "attaches the name of the output fact as metadata"
+              (should= ["bar" 2] (do-in-private-ns
+                                  (--> foobar
+                                       [:test/foo X Y]
+                                       (let [Z (+ X Y)])
+                                       [(rs "::bar") Z])
+                                  (let [m (meta foobar)
+                                        [n arity] (m :target-fact)]
+                                    [(name n) arity]))))
+          (it "defines an additional function for fact conditions"
+              (comment (should= "I'm here!" (do-in-private-ns
+                                             (--> foobar
+                                                  [:test/foo X Y]
+                                                  [:test/bar Y Z]
+                                                  [(rs "::baz") Y Z])
+                                             (foobar))))))
