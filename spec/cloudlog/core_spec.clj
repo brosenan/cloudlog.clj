@@ -3,14 +3,17 @@
             [cloudlog.core :refer :all]))
 
 (defmacro do-in-private-ns [& cmds]
-  `(let [~'myns (symbol (str "tmp" (rand-int 1000000)))
-         ~'old-ns *ns*]
-    (in-ns ~'myns)
-    (use 'clojure.core)
-    (use 'cloudlog.core)
-    (try
-      (do ~@cmds)
-      (finally (in-ns (symbol (str ~'old-ns)))))))
+  (let [[new-ns cmds] (if (string? (first cmds))
+                        [(first cmds) (rest cmds)]
+                        [(str "tmp" (rand-int 1000000)) cmds])]
+    `(let [~'myns (symbol ~new-ns)
+           ~'old-ns *ns*]
+       (in-ns ~'myns)
+       (use 'clojure.core)
+       (use 'cloudlog.core)
+       (try
+         (do ~@cmds)
+         (finally (in-ns (symbol (str ~'old-ns))))))))
 
 (defmacro rs [string]
   (read-string string))
@@ -47,10 +50,11 @@
                                              ; Extract the keys from the index
                                              (map first (index ["Hello, to the  World!"])))))
           (it "disallows output that is not a keyword in the current namespace"
-              (should-throw Exception "keyword :test/bar is not in the rule's namespace cloudlog.core-spec"
-                            (macroexpand '(--> foobar
-                                               [:test/foo X Y]
-                                               [:test/bar Y X]))))
+              (should-throw Exception "keyword :test/bar is not in the rule's namespace some-ns"
+                            (do-in-private-ns "some-ns"
+                                              (macroexpand '(--> foobar
+                                                                 [:test/foo X Y]
+                                                                 [:test/bar Y X])))))
           (it "attaches the name of the output fact as metadata"
               (should= ["bar" 2] (do-in-private-ns
                                   (--> foobar
