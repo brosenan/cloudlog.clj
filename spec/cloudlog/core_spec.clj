@@ -11,7 +11,6 @@
        (in-ns '~(symbol new-ns))
        (use 'clojure.core)
        (use 'cloudlog.core)
-       ;(use '~(symbol (str old-ns)))
        (try
          (do ~@cmds)
          (finally (in-ns '~(symbol (str old-ns))))))))
@@ -76,12 +75,24 @@
                                     [:test/bar Y X]
                                     [(rs "::baz") Y X])
                                ((meta foobar) :continuation))))
-          (it "returns input acceptable by the continuation"
-              (do-in-private-ns
-               (--> foobar
-                    [:test/foo X Y]
-                    [:test/bar Y X]
-                    [(rs "::baz") Y X])
-               (let [cont ((meta foobar) :continuation)
-                     cont-val (foobar [1 2])]
-                 (cont cont-val)))))
+          (it "attaches a source-fact attribute to the continuation"
+              (should= [:test/bar 2] (do-in-private-ns
+                               (--> foobar
+                                    [:test/foo X Y]
+                                    [:test/bar Y X]
+                                    [(rs "::baz") Y X])
+                               (-> foobar
+                                   (meta)
+                                   (get :continuation)
+                                   (meta)
+                                   (get :source-fact)))))
+          (it "returns an input for the continuation"
+              (should= [[1 3]] (do-in-private-ns
+                                (--> foobar
+                                     [:test/foo X Y]
+                                     [:test/bar Y Z]
+                                     [(rs "::baz") X Z])
+                                (let [val (foobar [1 2])
+                                      cont (-> foobar (meta) (get :continuation))
+                                      cont' (cont val)]
+                                  (cont' [2 3]))))))
