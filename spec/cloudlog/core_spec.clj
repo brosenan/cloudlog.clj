@@ -5,17 +5,18 @@
 (defmacro do-in-private-ns [& cmds]
   (let [[new-ns cmds] (if (string? (first cmds))
                         [(first cmds) (rest cmds)]
-                        [(str "tmp" (rand-int 1000000)) cmds])]
-    `(let [~'myns (symbol ~new-ns)
-           ~'old-ns *ns*]
-       (in-ns ~'myns)
+                        [(str "tmp" (rand-int 1000000)) cmds])
+        old-ns *ns*]
+    `(do
+       (in-ns '~(symbol new-ns))
        (use 'clojure.core)
        (use 'cloudlog.core)
+       ;(use '~(symbol (str old-ns)))
        (try
          (do ~@cmds)
-         (finally (in-ns (symbol (str ~'old-ns))))))))
+         (finally (in-ns '~(symbol (str old-ns))))))))
 
-(defmacro rs [string]
+(defn rs [string]
   (read-string string))
 
 (describe "(--> name source conds* dest)"
@@ -47,8 +48,8 @@
                                                   (let [word (clojure.string/lower-case word)])
                                                   (when-not (contains? stop-words word))
                                                   [(rs "::index") word text])
-                                             ; Extract the keys from the index
-                                             (map first (index ["Hello, to the  World!"])))))
+                                             ; extract the keys from the index
+                                             (map first (index ["hello, to the  world!"])))))
           (it "disallows output that is not a keyword in the current namespace"
               (should-throw Exception "keyword :test/bar is not in the rule's namespace some-ns"
                             (do-in-private-ns "some-ns"
@@ -56,14 +57,12 @@
                                                                  [:test/foo X Y]
                                                                  [:test/bar Y X])))))
           (it "attaches the name of the output fact as metadata"
-              (should= ["bar" 2] (do-in-private-ns
+              (should= [:output-fact-name-ns/bar 2] (do-in-private-ns "output-fact-name-ns"
                                   (--> foobar
-                                       [:test/foo X Y]
-                                       (let [Z (+ X Y)])
-                                       [(rs "::bar") Z])
-                                  (let [m (meta foobar)
-                                        [n arity] (m :target-fact)]
-                                    [(name n) arity]))))
+                                       [:test/foo x y]
+                                       (let [z (+ x y)])
+                                       [(rs "::bar") z])
+                                  ((meta foobar) :target-fact))))
           (it "returns an empty result when the argument does not match the source"
               (should-be empty? (do-in-private-ns
                                  (--> foobar
