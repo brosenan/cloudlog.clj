@@ -16,8 +16,9 @@
         [[(vec (rest target))] {:target-fact [(first target) 2]}])
       (let [[func meta] (generate-rule-func (first conds) (rest conds))
             params (vec (set/intersection symbols (pureclj/symbols func)))
-            meta {:continuation (with-meta `(fn [[~@params]] ~func) meta)}]
-        [`[~@params] meta]))))
+            key (second target)
+            meta {:continuation (with-meta `(fn [[~'$key$ ~@params]] ~func) meta)}]
+        [`[~key ~@params] meta]))))
 
 (defmethod process-conds  clojure.lang.ISeq [conds symbols]
   (let [cond (first conds)

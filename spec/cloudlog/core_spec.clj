@@ -95,4 +95,12 @@
                                 (let [val (foobar [1 2])
                                       cont (-> foobar (meta) (get :continuation))
                                       cont' (cont val)]
-                                  (cont' [2 3]))))))
+                                  (cont' [2 3])))))
+          (it "returns the continuation fact's first argument (key) as the first element in the returned vector"
+              (should= ["hello" "world"] (do-in-private-ns
+                                          (--> foobar
+                                               [:test/foo X Y]
+                                               [:test/bar [Y "world"] Z]
+                                               [(rs "::baz") X Z])
+                                          (-> (foobar ["say" "hello"])
+                                              (first))))))
