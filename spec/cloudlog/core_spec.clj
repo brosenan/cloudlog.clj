@@ -103,4 +103,10 @@
                                                [:test/bar [Y "world"] Z]
                                                [(rs "::baz") X Z])
                                           (-> (foobar ["say" "hello"])
-                                              (first))))))
+                                              (first)))))
+          (it "raises a compilation error when the key to a fact contains an unbound variable"
+              (should-throw Exception "variables #{Z} are unbound in the key for :test/bar"
+                            (macroexpand '(--> foobar
+                                              [:test/foo X Y]
+                                              [:test/bar Z X]
+                                              [(rs "::bar") X Z])))))

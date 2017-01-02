@@ -17,7 +17,10 @@
       (let [[func meta] (generate-rule-func (first conds) (rest conds))
             params (vec (set/intersection symbols (pureclj/symbols func)))
             key (second target)
+            missing (set/difference (pureclj/symbols key) symbols)
             meta {:continuation (with-meta `(fn [[~'$key$ ~@params]] ~func) meta)}]
+        (when-not (empty? missing)
+          (throw (Exception. (str "variables " missing " are unbound in the key for " (first target)))))
         [`[~key ~@params] meta]))))
 
 (defmethod process-conds  clojure.lang.ISeq [conds symbols]
