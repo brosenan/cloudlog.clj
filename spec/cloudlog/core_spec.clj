@@ -8,6 +8,7 @@
                         [(str "tmp" (rand-int 1000000)) cmds])
         old-ns *ns*]
     `(do
+       (remove-ns '~(symbol new-ns))
        (in-ns '~(symbol new-ns))
        (use 'clojure.core)
        (use 'cloudlog.core)
@@ -87,26 +88,46 @@
                                    (meta)
                                    (get :source-fact)))))
           (it "returns an input for the continuation"
-              (should= [[1 3]] (do-in-private-ns
-                                (--> foobar
-                                     [:test/foo X Y]
-                                     [:test/bar Y Z]
-                                     [(rs "::baz") X Z])
-                                (let [val (foobar [1 2])
-                                      cont (-> foobar (meta) (get :continuation))
-                                      cont' (cont val)]
-                                  (cont' [2 3])))))
+              (do-in-private-ns
+               (--> foobar
+                    [:test/foo X Y]
+                    [:test/bar Y Z]
+                    [(rs "::baz") X Z])
+               (should= [[1 3]]
+                        (let [vals (foobar [1 2]) ; vals contains a tuple for each resulting continuation
+                              cont-factory (-> foobar (meta) (get :continuation))
+                                        ; cont-factory is the function that takes each tuple and returns a continuation
+                              conts (map cont-factory vals)] ; conts are the actual continuations
+                          (apply concat (for [cont conts]
+                                          (cont [2 3])))))))
           (it "returns the continuation fact's first argument (key) as the first element in the returned vector"
-              (should= ["hello" "world"] (do-in-private-ns
-                                          (--> foobar
-                                               [:test/foo X Y]
-                                               [:test/bar [Y "world"] Z]
-                                               [(rs "::baz") X Z])
-                                          (-> (foobar ["say" "hello"])
-                                              (first)))))
+              (should= [["hello" "world"]] (do-in-private-ns
+                                             (--> foobar
+                                                  [:test/foo X Y]
+                                                  [:test/bar [Y "world"] Z]
+                                                  [(rs "::baz") X Z])
+                                             (->> (foobar ["say" "hello"])
+                                                  (map first)))))
+          (it "treats variables defined before a fact condition as unification values"
+              (do-in-private-ns
+               (--> foobar
+                    [:test/foo X Y]
+                    [:test/bar Y X]
+                    [(rs "::baz") X Y])
+               (should= [[2 1 2]] (foobar [1 2]))))
           (it "raises a compilation error when the key to a fact contains an unbound variable"
               (should-throw Exception "variables #{Z} are unbound in the key for :test/bar"
                             (macroexpand '(--> foobar
                                               [:test/foo X Y]
                                               [:test/bar Z X]
-                                              [(rs "::bar") X Z])))))
+                                              [(rs "::bar") X Z]))))
+          (it "takes variables calculated by guards into consideration in continuations"
+              (should= [[3 0] [3 1] [3 2]] (do-in-private-ns
+                            (--> foobar
+                                 [:test/foo X Y]
+                                 (let [Z (+ X Y)])
+                                 (for [W (range Z)])
+                                 [:test/bar Z W]
+                                 [(rs "::baz") W])
+                            (foobar [1 2])))))
+

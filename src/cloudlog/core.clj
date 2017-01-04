@@ -5,27 +5,42 @@
 
 (declare generate-rule-func)
 
+(defmulti propagate-symbols (fn [cond symbols] (first cond)) :default :no-bindings)
+(defmethod propagate-symbols :no-bindings [cond symbols]
+  symbols)
+
+(defn binding-symbols [bindings cond]
+  (pureclj/symbols (map bindings (range 0 (count bindings) 2))))
+
+(defmethod propagate-symbols 'let [cond symbols]
+  (set/union symbols (binding-symbols (second cond) cond)))
+
+(defmethod propagate-symbols 'for [cond symbols]
+  (set/union symbols (binding-symbols (second cond) cond)))
+
 (defmulti process-conds (fn [conds symbols] (class (first conds))))
 
 (defmethod process-conds  clojure.lang.IPersistentVector [conds symbols]
   (let [target (first conds)
         target-name (eval (first target))]
     (if (= (count conds) 1)
-      (if (not= (namespace target-name) (str *ns*))
-        (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*)))
+      (do ; Target fact
+        (when (not= (namespace target-name) (str *ns*))
+          (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*))))
         [[(vec (rest target))] {:target-fact [(first target) 2]}])
-      (let [[func meta] (generate-rule-func (first conds) (rest conds))
+      ; Continuation
+      (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
             params (vec (set/intersection symbols (pureclj/symbols func)))
             key (second target)
             missing (set/difference (pureclj/symbols key) symbols)
             meta {:continuation (with-meta `(fn [[~'$key$ ~@params]] ~func) meta)}]
         (when-not (empty? missing)
           (throw (Exception. (str "variables " missing " are unbound in the key for " (first target)))))
-        [`[~key ~@params] meta]))))
+        [`[[~key ~@params]] meta]))))
 
 (defmethod process-conds  clojure.lang.ISeq [conds symbols]
   (let [cond (first conds)
-        [body meta] (process-conds (rest conds) symbols)
+        [body meta] (process-conds (rest conds) (propagate-symbols cond symbols))
         body (seq (concat cond [body]))]
     (if (= (first cond) 'for)
       [`(apply concat ~body)]
@@ -40,18 +55,20 @@
            [~'$res$]))
       run)))
 
-(defn generate-rule-func [source-fact conds]
-  (let [symbols (pureclj/symbols (rest source-fact))
+(defn generate-rule-func [source-fact conds ext-symbols]
+  (let [symbols (set/difference (pureclj/symbols (rest source-fact)) ext-symbols)
         [body meta] (process-conds conds symbols)
         meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})
         vars (vec symbols)
         func `(fn [~'$input$]
-                (let [~'$poss$ (norm-run* ~vars
-                                          (logic/== ~'$input$ [~@(rest source-fact)]))]
-                  (apply concat (for [~vars ~'$poss$] 
-                                  ~body))))]
+                ~(if (empty? vars)
+                   body
+                   `(let [~'$poss$ (norm-run* ~vars
+                                              (logic/== ~'$input$ [~@(rest source-fact)]))]
+                      (apply concat (for [~vars ~'$poss$] 
+                                      ~body)))))]
     [func meta]))
 
 (defmacro --> [rulename source-fact & conds]
-  (let [[func meta] (generate-rule-func source-fact conds)]
+  (let [[func meta] (generate-rule-func source-fact conds #{})]
     `(def ~rulename (with-meta ~func ~meta))))
