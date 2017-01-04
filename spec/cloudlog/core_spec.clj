@@ -122,12 +122,23 @@
                                               [:test/bar Z X]
                                               [(rs "::bar") X Z]))))
           (it "takes variables calculated by guards into consideration in continuations"
-              (should= [[3 0] [3 1] [3 2]] (do-in-private-ns
+              (should= [[3 0 3] [3 1 3] [3 2 3]] (do-in-private-ns
                             (--> foobar
                                  [:test/foo X Y]
                                  (let [Z (+ X Y)])
                                  (for [W (range Z)])
                                  [:test/bar Z W]
                                  [(rs "::baz") W])
-                            (foobar [1 2])))))
+                            (foobar [1 2]))))
+          (it "rejects mismatched coninuations if all variables in the coninuation fact are bound"
+              (do-in-private-ns
+               (--> foobar
+                    [:test/foo X Y]
+                    [:test/bar Y X]
+                    [(rs "::bar") Y])
+               (let [tuples (foobar [1 2])
+                     cont-factory ((meta foobar) :continuation)
+                     conts (map cont-factory tuples)
+                     cont (first conts)]
+                 (should= [] (cont [3 4]))))))
 

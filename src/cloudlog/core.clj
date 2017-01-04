@@ -20,6 +20,7 @@
 
 (defmulti process-conds (fn [conds symbols] (class (first conds))))
 
+; fact
 (defmethod process-conds  clojure.lang.IPersistentVector [conds symbols]
   (let [target (first conds)
         target-name (eval (first target))]
@@ -30,14 +31,15 @@
         [[(vec (rest target))] {:target-fact [(first target) 2]}])
       ; Continuation
       (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
-            params (vec (set/intersection symbols (pureclj/symbols func)))
             key (second target)
+            params (vec (set/intersection symbols (pureclj/symbols func)))
             missing (set/difference (pureclj/symbols key) symbols)
             meta {:continuation (with-meta `(fn [[~'$key$ ~@params]] ~func) meta)}]
         (when-not (empty? missing)
           (throw (Exception. (str "variables " missing " are unbound in the key for " (first target)))))
         [`[[~key ~@params]] meta]))))
 
+; guard
 (defmethod process-conds  clojure.lang.ISeq [conds symbols]
   (let [cond (first conds)
         [body meta] (process-conds (rest conds) (propagate-symbols cond symbols))
@@ -62,7 +64,11 @@
         vars (vec symbols)
         func `(fn [~'$input$]
                 ~(if (empty? vars)
-                   body
+                                        ; No unbound variables
+                   `(if (= ~'$input$ [~@(rest source-fact)])
+                      ~body
+                      [])
+                   ; vars contains the unbound variables
                    `(let [~'$poss$ (norm-run* ~vars
                                               (logic/== ~'$input$ [~@(rest source-fact)]))]
                       (apply concat (for [~vars ~'$poss$] 
