@@ -75,9 +75,7 @@
                                       ~body)))))]
     [func meta]))
 
-(defmacro --> [rulename source-fact & conds]
-  (let [[func meta] (generate-rule-func source-fact conds #{})]
+(defmacro defrule [rulename args source-fact & body]
+  (let [conds (concat body [`[~(keyword (str *ns*) (name rulename)) ~@args]])
+        [func meta] (generate-rule-func source-fact conds #{})]
     `(def ~rulename (with-meta ~func ~meta))))
-
-(defmacro defrule [name args & body]
-  `(--> ~name ~@body [~(keyword (str *ns*) (clojure.core/name name)) ~@args]))
