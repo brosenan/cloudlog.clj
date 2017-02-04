@@ -45,7 +45,7 @@
         [body meta] (process-conds (rest conds) (propagate-symbols cond symbols))
         body (seq (concat cond [body]))]
     (if (= (first cond) 'for)
-      [`(apply concat ~body)]
+      [`(apply concat ~body) meta]
       [body meta])))
 
 (defmacro norm-run* [vars goal]

@@ -147,34 +147,49 @@ This tuple can be used to construct a new rule function based on the continuatio
    (rule-func ["bob" "Hi, Alice!"]) ; :test/tweeted fact
    )) => [["alice" "Hi, Alice!"]]
 
-(defrule foobar-world [X Z]
-     [:test/foo X Y]
-     [:test/bar [Y "world"] Z])
+"Cloudlog tries to be true to its logic-programming nature, but since it is intended to work with
+large amounts of data, some restrictions need to be applied.  In our case, the main restriction is
+that in any fact, the first argument is considered the **key**, and there are some restrictions and recommendations
+regarding keys.  Generally, choosing the correct key has a significant impact on the performance of the application.
+A key must be specific enough so that all facts with the same key can be stored in memory at the same time.
 
-(fact "returns the continuation fact's first argument (key) as the first element in the returned vector"
-      (->> (foobar-world ["say" "hello"])
-           (map first)) => [["hello" "world"]])
-(fact "raises a compilation error when the key to a fact contains an unbound variable"
-      (macroexpand '(defrule foobar2' [X Z]
-                         [:test/foo X Y]
-                         [:test/bar Z X])) => (throws "variables #{Z} are unbound in the key for :test/bar"))
+When writing rules with joins, we need to make sure the key parameter for the joined fact is bound.
+For example, in the `timeline` rule, we chose the order of facts for a reason.
+`:test/tweeted` is keyed by `author`, and `:test/follows` is keyed by `user`.  If we get the `:test/follows`
+first, we learn about the `author` who's tweets we need to consider.  However, when we consider `:test/tweeted`
+first, this does not give us a clue regarding the `:test/follows` facts we need to consider for this tweet,
+since it does not provide value for `user`.
 
-(defrule foobar-range [W]
-     [:test/foo X Y]
-     (let [Z (+ X Y)])
-     (for [W (range Z)])
-     [:test/bar Z W])
+We provide a compile-time error in such cases."
+(fact
+ (macroexpand `(defrule timeline [user tweet]
+                 [:test/tweeted author tweet]
+                 [:test/follows user author]))
+   => (throws "variables #{cloudlog.core_test/user} are unbound in the key for :test/follows"))
 
-(fact "takes variables calculated by guards into consideration in continuations"
-      (foobar-range [1 2]) => [[3 0 3] [3 1 3] [3 2 3]])
+"Of-course, guards are supported with joins."
+(defrule foobar-range [w]
+     [:test/foo x y]
+     (let [z (+ x y)])
+     (for [w (range z)])
+     [:test/bar z w])
 
-(defrule foobar-reject [Y]
-     [:test/foo X Y]
-     [:test/bar Y X])
+"In the above rule we take `x` and `y` from fact `:test/foo`, sum them to get `z`, and span the range `0..z`.
+We return `w` values for which there is a fact `[:test/bar z w]`.
 
-(fact "rejects mismatched coninuations if all variables in the coninuation fact are bound"
-      (let [tuples (foobar-reject [1 2])
-            cont-factory ((meta foobar-reject) :continuation)
-            conts (map cont-factory tuples)
-            cont (first conts)]
-        (cont [3 4])) => [])
+The rule function for `foobar-range` will return a tuple based on the guards (and not based on `:test/bar`,
+which is to be considered afterwards).  The first element in each tuple is a key to be used against `:test/bar` (`z`),
+followed by the values of `w` and `z`:"
+(fact
+ (foobar-range [1 2]) => [[3 0 3] [3 1 3] [3 2 3]])
+
+"If a matching `:test/bar` fact exists, a result will be produced."
+(fact
+ (let [cont (-> foobar-range meta :continuation)
+       rule-func (cont [3 1 3])]
+   (rule-func [3 1])) => [[1]])
+"However, if it does not, an empty result will be produced."
+(fact
+ (let [cont (-> foobar-range meta :continuation)
+       rule-func (cont [3 1 3])]
+   (rule-func [4 1])) => [])
