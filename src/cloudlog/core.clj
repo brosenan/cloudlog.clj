@@ -28,7 +28,7 @@
       (do ; Target fact
         (when (not= (namespace target-name) (str *ns*))
           (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*))))
-        [[(vec (rest target))] {:target-fact [(first target) 2]}])
+        [[(vec (rest target))] {:target-arity (count (rest target))}])
       ; Continuation
       (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
             key (second target)
@@ -78,3 +78,6 @@
 (defmacro --> [rulename source-fact & conds]
   (let [[func meta] (generate-rule-func source-fact conds #{})]
     `(def ~rulename (with-meta ~func ~meta))))
+
+(defmacro defrule [name args & body]
+  `(--> ~name ~@body [~(keyword (str *ns*) (clojure.core/name name)) ~@args]))
