@@ -2,12 +2,11 @@
   (:use midje.sweet)
   (:use [cloudlog.core]))
 
-[[:chapter {:title "Rule Definition"}]]
-[[:section {:title "defrule"}]]
+[[:chapter {:title "defrule: Rule Definition Macro"}]]
 "Definition:"
 [[:reference {:refer "cloudlog.core/defrule"}]]
 
-[[:subsection {:title "Simple Rules"}]]
+[[:section {:title "Simple Rules"}]]
 "`defrule` defines a Cloudlog rule.  Such a rule always starts with a **fact pattern**: 
 a vector for which the first element is a keyword representing the fact name, and the rest of the elements
 are **bindings**, as we explain later.
@@ -49,7 +48,7 @@ For example, the following rule is similar to `foo-yx`, only that it assumes tha
 (fact
       (foo-unify [2 3]) => empty?)
 
-[[:subsection {:title "Guards"}]]
+[[:section {:title "Guards"}]]
 "While simple rules are useful in some cases, they are limited to reordering or restructuring the fields in the source fact, 
 but cannot do more.  **Guards** fix this by allowing (purely-functional) Clojure functions to be used inside rules.
 
@@ -93,7 +92,7 @@ assert a certain relationship between the bound variable and the expression to i
 A `when` or `when-not` guards are just like predicates that pass or fail depending on the 
 (Clojure-level) predicate given to them."
 
-[[:subsection {:title "Joins"}]]
+[[:section {:title "Joins"}]]
 "Even with guards, rules are still limited to considering only a single fact.
 Sometimes we need to draw a conclusion based on a combination of facts.
 A classical example is applications such as [Twitter](https://twitter.com), in which users can:
