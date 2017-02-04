@@ -5,6 +5,5 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [pureclj/pureclj "0.1.0-SNAPSHOT"]]
-  :profiles {:dev {:dependencies [[speclj "3.3.1"]]}}
-  :plugins [[speclj "3.3.1"]]
-  :test-paths ["spec"])
+  :profiles {:dev {:dependencies [[midje "1.8.3"]]
+                   :plugins [[lein-midje "3.2.1"]]}})
