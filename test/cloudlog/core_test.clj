@@ -144,7 +144,7 @@ This tuple can be used to construct a new rule function based on the continuatio
  (let [cont (-> timeline meta :continuation) ; The continuation function we got as meta
        rule-func (cont ["bob" "alice" "bob"])] ; The new rule function
    (rule-func ["bob" "Hi, Alice!"]) ; :test/tweeted fact
-   )) => [["alice" "Hi, Alice!"]]
+   ) => [["alice" "Hi, Alice!"]])
 
 "Cloudlog tries to be true to its logic-programming nature, but since it is intended to work with
 large amounts of data, some restrictions need to be applied.  In our case, the main restriction is
