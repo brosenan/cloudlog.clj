@@ -18,4 +18,8 @@
             :files {"core"
                     {:input "test/cloudlog/core_test.clj"
                      :title "core"
-                     :subtitle "Rule semantics"}}})
+                     :subtitle "Rule semantics"}
+                    "interset"
+                    {:input "test/cloudlog/interset_test.clj"
+                     :title "interset"
+                     :subtitle "Intersection Sets"}}})
