@@ -24,11 +24,11 @@ it returns a sequence of bindings for the target fact (`foo-yx`)."
 
 "The function contains metadata regarding the identity of the source fact."
 (fact
-      (:source-fact (meta foo-yx)) => [:test/foo 2])
+      (-> foo-yx meta :source-fact) => [:test/foo 2])
 
 "The arity of the target fact (the number of elements in each vector in the result) is also metadata of the function."
 (fact
-      (:target-arity (meta foo-yx)) => 2)
+      (-> foo-yx meta :target-arity) => 2)
 
 "The arguments of both the rule and the source fact are not limited to being variables.
 They can also be **values**.
@@ -112,7 +112,7 @@ Cloudlog rules can depend on more than just the source-fact."
 "In such cases, the rule function cannot produce the result right away.
 The above rule's source fact is `:test/follows`:"
 (fact
- (:source-fact (meta timeline)) => [:test/follows 2])
+ (-> timeline meta :source-fact) => [:test/follows 2])
 "However, from a `:test/follows` fact alone we cannot create a timeline entry.
 To create such an entry, we need to match it with a `:test/tweeted` fact.
 
@@ -120,7 +120,7 @@ To allow this, functions that represent rules that depend on more than one fact 
 
 Continuations are functions, provided as metadata on the rule function."
 (fact
- (:continuation (meta timeline)) => fn?)
+ (-> timeline meta :continuation) => fn?)
 
 "The continuation function itself has metadata, indicating what its source-fact is."
 (fact
