@@ -79,3 +79,22 @@
   (let [conds (concat body [`[~(keyword (str *ns*) (name rulename)) ~@args]])
         [func meta] (generate-rule-func source-fact conds #{})]
     `(def ~rulename (with-meta ~func ~meta))))
+
+(defn with* [seq]
+  (apply merge-with set/union
+         (for [fact seq]
+           (let [fact-name (first fact)
+                 arity (-> fact rest count)]
+             {[fact-name arity] #{(rest fact)}}))))
+
+(defn simulate* [rule factmap]
+  (let [source-fact (-> rule meta :source-fact)
+        input-set (factmap source-fact)
+        after-first (into #{} (apply concat (map rule input-set)))
+        cont (-> rule meta :continuation)]
+    (if cont
+      (let [next-rules (map cont after-first)]
+        (into #{} (apply concat (for [next-rule next-rules]
+                                  (simulate* (with-meta next-rule (meta cont)) factmap)))))
+      ;else
+      after-first)))

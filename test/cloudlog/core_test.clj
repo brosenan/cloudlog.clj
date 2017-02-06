@@ -192,3 +192,41 @@ followed by the values of `w` and `z`:"
  (let [cont (-> foobar-range meta :continuation)
        rule-func (cont [3 1 3])]
    (rule-func [4 1])) => [])
+
+[[:chapter {:title "with/simulate: Evaluate a Rule based on facts"}]]
+"We believe in [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as a \"way of life\" in the software world.
+The examples in this very document are tests that are written *before* the corresponding implementation.
+Regardless of whether we write the tests before or after the implementation, it is well agreed that automated tests are
+key to successful software projects.  App developers using Cloudlog should be no exception.
+
+We therefore provide the `with` and `simulate` macros, which together allow rules to be tested independently of
+the system implementing Cloudlog, without having to load data to databases, launch clusters etc."
+
+[[:section {:title "Under the Hood"}]]
+[[:subsection {:title "with*"}]]
+"The `with` is replaced with a call to the `with*` function, which translates a *sequence of facts* to a map from
+fact names and arities to sets of value tuples.  For example:"
+(fact
+ (with* [[:test/follows "alice" "bob"]
+         [:test/tweeted "bob" "hello"]
+         [:test/follows "bob" "charlie"]])
+ => {[:test/follows 2] #{["alice" "bob"]
+                         ["bob" "charlie"]}
+     [:test/tweeted 2] #{["bob" "hello"]}})
+
+[[:reference {:refer "cloudlog.core/with*"}]]
+
+[[:subsection {:title "simulate*"}]]
+"This map is then given as a parameter to `simulate*` -- the function that the `simulate` macro evaluates to, along
+with the rule function to be simulated.
+
+A simple rule is simulated by applying tuples from the set corresponding to the rule's source-fact,
+and then aggregating the results."
+(fact
+ (simulate* foo-yx {[:test/foo 2] #{[1 2] [3 4]}}) => #{[2 1] [4 3]})
+
+"In rules with joins, the continuations are followed."
+(fact
+ (simulate* timeline (with* [[:test/follows "alice" "bob"]
+                             [:test/tweeted "bob" "hello"]]))
+ => #{["alice" "hello"]})
