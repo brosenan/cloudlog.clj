@@ -3,7 +3,7 @@
   (:use [cloudlog.core])
   (:use [cloudlog.core_test]))
 
-[[:chapter {:title "simulaxte-with: Evaluate a Rule based on facts" :tag "simulate-with"}]]
+[[:chapter {:title "simulate-with: Evaluate a Rule based on facts" :tag "simulate-with"}]]
 "We believe in [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as a \"way of life\" in the software world.
 The examples in this very document are tests that are written *before* the corresponding implementation.
 Regardless of whether we write the tests before or after the implementation, it is well agreed that automated tests are
