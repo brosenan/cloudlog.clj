@@ -263,8 +263,10 @@ the unique identifier of the question."
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]
                      [index-docs "foo" "doc1"]
+                     [index-docs "foo" "doc2"]
                      [index-docs "hello" "doc5"]
                      [:test/doc "doc1" "Foo goes into a Bar..."]
+                     [:test/doc "doc2" "Foo goes into a Pub..."]
                      [:test/doc "doc5" "World peace starts with a small Hello!"])
       => #{[1234 "World peace starts with a small Hello!"]
            [2345 "Foo goes into a Bar..."]})
