@@ -26,9 +26,9 @@ it returns a sequence of bindings for the target fact (`foo-yx`)."
 (fact
       (-> foo-yx meta :source-fact) => [:test/foo 2])
 
-"The arity of the target fact (the number of elements in each vector in the result) is also metadata of the function."
+"The name and arity of the target fact is also metadata of the function."
 (fact
-      (-> foo-yx meta :target-arity) => 2)
+ (-> foo-yx meta :target-fact) => [::foo-yx 2])
 
 "The arguments of both the rule and the source fact are not limited to being variables.
 They can also be **values**.
@@ -255,10 +255,17 @@ Following these headers are the body element of the clause."
  (-> multi-keyword-search meta :source-fact) => [:test/multi-keyword-search? 2])
 
 "Here, `:test/multi-keyword-search?` is a *question*, a fact containing the input arguments,
-preceded by a `$unique$` parameter, which identifies a specific question (hence the arity `2`).
+preceded by a `$unique$` parameter, which identifies a specific question (hence the arity `2`)."
 
-The output is an *answer*, in the form of tuples that match the output arguments, preceded by the
-the unique identifier of the question."
+"The *answer* is a derived fact of the form `:predicate-keyword!`:"
+(fact
+ (loop [rulefunc multi-keyword-search]
+   (or (-> rulefunc meta :target-fact)
+       (recur (-> rulefunc meta :continuation))))
+ => [:test/multi-keyword-search! 2])
+
+"In this case, the answer's arity is also `2` -- the unique identifier that matches the question
+and the output paramter."
 (fact (simulate-with multi-keyword-search
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]

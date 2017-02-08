@@ -23,10 +23,10 @@
 ; fact
 (defmethod process-conds  clojure.lang.IPersistentVector [conds symbols]
   (let [target (first conds)
-        target-name (eval (first target))]
+        target-name (first target)]
     (if (= (count conds) 1)
       (do ; Target fact
-        [[(vec (rest target))] {:target-arity (count (rest target))}])
+        [[(vec (rest target))] {:target-fact [target-name (count (rest target))]}])
       ; Continuation
       (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
             key (second target)
