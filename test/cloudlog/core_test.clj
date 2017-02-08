@@ -204,7 +204,7 @@ of users identified as \"influencers\", we would probably write a rule of the fo
   [:test/influencer influencer]
   [timeline influencer tweet])
 
-"Now we can simulate our rule (using `simulate-with`, see {{simulate-with}}):"
+"Now we can simulate our rule (using `simulate-with`, see section {{simulate-with}}):"
 (fact
  (simulate-with trending
                 [:test/influencer "gina"]
@@ -215,5 +215,59 @@ of users identified as \"influencers\", we would probably write a rule of the fo
  => #{["purple is the new black!"]
       ["pink is the new purple!"]})
 
-[[:file {:src "core_test_sim.clj"}]]
-[[:file {:src "core_test_facttable.clj"}]]
+[[:chapter {:title "defclause: Top-Down Logic"}]]
+"Regular rules defined using `defrule` define *bottom-up logic*.  Bottom-up logic is applied when facts are added or removed,
+creating or removing derived facts as needed.
+Unfortunately, this is often not enough.  One limitation of bottom-up reasoning (logic)
+is that it cannot take into account a goal -- a clue for what we are trying to find.
+It tries to build all possible result tuples, but without guidance this can be hard at times.
+Clauses fix this by performing logic at query time, starting with a provided goal.
+
+Consider the `index-docs` example above.  When a new `:test/doc` fact is created, the `index-docs` rule creates
+an index entry for each keyword in the text.  Now imagine we wish to use this index for retrieval.
+What we want is to allow users to provide a sequence of search keywords, and get the full text of all the document
+that match *all* these keywords.
+
+Doing this with bottom-up reasoning is quite hard.  We need to create index elements for every combination of keywords.
+Clauses allow us to start with a particular combination, retrieve documents based on one element (say, the first keyword)
+retrieve full texts and only accept those in which the other keywords appear.
+
+The following clause does just that."
+(defclause multi-keyword-search
+  :test/multi-keyword-search [keywords] [text]
+  (let [keywords (map clojure.string/lower-case keywords)
+        first-kw (first keywords)])
+  [index-docs first-kw id]
+  [:test/doc id text]
+  (let [lc-text (clojure.string/lower-case text)])
+  (when (every? #(.contains lc-text %) (rest keywords))))
+
+"`multi-keyword-search` is the name of the function to be created (similar to a rule function).
+`:test/multi-keyword-search` is the *predicate* to be associated with this clause.
+Unlike the function name which needs to be unique, the predicate can be shared across clauses.
+Users will eventually query predicates, not clauses.
+The vector `[keywords]` contains the input arguments to the predicate, and `[text]` is the
+vector of output arguments.  In either case you can have more than one argument.
+Following these headers are the body element of the clause."
+
+"The source-fact for a clause is a question of the form `:predicate-keyword?`.  For example:"
+(fact
+ (-> multi-keyword-search meta :source-fact) => [:test/multi-keyword-search? 2])
+
+"Here, `:test/multi-keyword-search?` is a *question*, a fact containing the input arguments,
+preceded by a `$unique$` parameter, which identifies a specific question (hence the arity `2`).
+
+The output is an *answer*, in the form of tuples that match the output arguments, preceded by the
+the unique identifier of the question."
+(fact (simulate-with multi-keyword-search
+                     [:test/multi-keyword-search? 1234 ["hello" "world"]]
+                     [:test/multi-keyword-search? 2345 ["foo" "bar"]]
+                     [index-docs "foo" "doc1"]
+                     [index-docs "hello" "doc5"]
+                     [:test/doc "doc1" "Foo goes into a Bar..."]
+                     [:test/doc "doc5" "World peace starts with a small Hello!"])
+      => #{[1234 "World peace starts with a small Hello!"]
+           [2345 "Foo goes into a Bar..."]})
+
+[[:file {:src "test/cloudlog/core_test_sim.clj"}]]
+[[:file {:src "test/cloudlog/core_test_facttable.clj"}]]

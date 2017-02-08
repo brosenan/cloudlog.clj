@@ -26,8 +26,6 @@
         target-name (eval (first target))]
     (if (= (count conds) 1)
       (do ; Target fact
-        (when (not= (namespace target-name) (str *ns*))
-          (throw (Exception. (str "keyword " target-name " is not in the rule's namespace " *ns*))))
         [[(vec (rest target))] {:target-arity (count (rest target))}])
       ; Continuation
       (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
@@ -46,6 +44,7 @@
         body (seq (concat cond [body]))]
     (if (= (first cond) 'for)
       [`(apply concat ~body) meta]
+      ; else
       [body meta])))
 
 (defmacro norm-run* [vars goal]
@@ -59,7 +58,7 @@
 
 (defn generate-rule-func [source-fact conds ext-symbols]
   (let [symbols (set/difference (pureclj/symbols (rest source-fact)) ext-symbols)
-        [body meta] (process-conds conds symbols)
+        [body meta] (process-conds conds (set/union symbols ext-symbols))
         meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})
         vars (vec symbols)
         func `(fn [~'$input$]
@@ -79,6 +78,15 @@
   (let [conds (concat body [`[~(keyword (str *ns*) (name rulename)) ~@args]])
         [func meta] (generate-rule-func source-fact conds #{})]
     `(def ~rulename (with-meta ~func ~(merge meta {:ns *ns* :name (str rulename)})))))
+
+(defn append-to-keyword [keywd suffix]
+  (keyword (namespace keywd) (str (name keywd) suffix)))
+
+(defmacro defclause [clausename pred args-in args-out & body]
+  (let [source-fact `[~(append-to-keyword pred "?") ~'$unique$ ~@args-in]
+        conds (concat body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
+        [func meta] (generate-rule-func source-fact conds #{})]
+    `(def ~clausename (with-meta ~func ~(merge meta {:ns *ns* :name (str clausename)})))))
 
 (defn with* [seq]
   (apply merge-with set/union
