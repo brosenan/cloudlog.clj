@@ -78,7 +78,7 @@
 (defmacro defrule [rulename args source-fact & body]
   (let [conds (concat body [`[~(keyword (str *ns*) (name rulename)) ~@args]])
         [func meta] (generate-rule-func source-fact conds #{})]
-    `(def ~rulename (with-meta ~func ~meta))))
+    `(def ~rulename (with-meta ~func ~(merge meta {:ns *ns* :name (str rulename)})))))
 
 (defn with* [seq]
   (apply merge-with set/union
@@ -101,3 +101,13 @@
 
 (defn simulate-with [rule & facts]
   (simulate* rule (with* facts)))
+
+(defmulti fact-table (fn [[name arity]] (println "***" name) (class name)))
+
+(defmethod fact-table clojure.lang.Named [[name arity]]
+  (str (namespace name) "/" (clojure.core/name name)))
+(defmethod fact-table clojure.lang.IFn [[name arity]]
+  (let [ns (-> name meta :ns)
+        name (-> name meta :name)]
+    (str ns "/" name)))
+(prefer-method fact-table clojure.lang.Named clojure.lang.IFn)

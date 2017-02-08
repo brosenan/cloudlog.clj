@@ -193,7 +193,29 @@ followed by the values of `w` and `z`:"
        rule-func (cont [3 1 3])]
    (rule-func [4 1])) => [])
 
-[[:chapter {:title "simulate-with: Evaluate a Rule based on facts"}]]
+[[:section {:title "Derived Facts"}]]
+"Each rule defines a derived fact, i.e., each tuple produced by a rule is stored as a fact.
+The name of this fact is the fully-quaified name of the rule function.
+This fact can then be used in other rules.
+
+For example, if we wish to create a \"trending\" timeline, aggregating the timelines 
+of users identified as \"influencers\", we would probably write a rule of the following form:"
+(defrule trending [tweet]
+  [:test/influencer influencer]
+  [timeline influencer tweet])
+
+"Now we can simulate our rule (using `simulate-with`, see {{simulate-with}}):"
+(fact
+ (simulate-with trending
+                [:test/influencer "gina"]
+                [:test/influencer "tina"]
+                [timeline "tina" "purple is the new black!"]
+                [timeline "gina" "pink is the new purple!"]
+                [timeline "some-lamo" "orange is the new bananna"])
+ => #{["purple is the new black!"]
+      ["pink is the new purple!"]})
+
+[[:chapter {:title "simulate-with: Evaluate a Rule based on facts" :tag "simulate-with"}]]
 "We believe in [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as a \"way of life\" in the software world.
 The examples in this very document are tests that are written *before* the corresponding implementation.
 Regardless of whether we write the tests before or after the implementation, it is well agreed that automated tests are
@@ -249,3 +271,104 @@ and then aggregating the results."
  => #{["alice" "hello"]})
 
 [[:reference {:refer "cloudlog.core/simulate*"}]]
+
+[[:chapter {:title "fact-table: Get a Fully-Qualified Name for a Fact"}]]
+"In an implementation of a Cloudlog engine it is necessary, given a `:source-fact` meta of a rule, to know
+which real-world resources (tables, queues etc) are associated with this fact.  Doing so
+consistently is important to get different references to the same fact to work against the same resources.
+
+The function `fact-table` takes a `[name arity]` pair that is given as the `:source-fact` of a rule (or a continuation)
+and returns a string representing this fact.
+
+For raw facts (represented by Clojure keywords, e.g., `:test/follows`), the returned string is simply the 
+fully qualified name of the keyword:"
+(fact
+ (-> timeline meta :source-fact fact-table) => "test/follows")
+
+"For a derived fact, represented as a name of a rule, the returned string is the 
+fully qualified name of the rule."
+(fact
+ (simulate-with trending 
+                [:test/influencer "gina"]
+                [:test/influencer "tina"]
+                [timeline "tina" "purple is the new black!"]
+                [timeline "gina" "pink is the new purple!"]
+                [timeline "some-lamo" "orange is the new bananna"])
+ => #{["purple is the new black!"]
+      ["pink is the new purple!"]})
+
+[[:chapter {:title "simulate-with: Evaluate a Rule based on facts" :tag "simulate-with"}]]
+"We believe in [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as a \"way of life\" in the software world.
+The examples in this very document are tests that are written *before* the corresponding implementation.
+Regardless of whether we write the tests before or after the implementation, it is well agreed that automated tests are
+key to successful software projects.  App developers using Cloudlog should be no exception.
+
+We therefore provide the `simulate-with` function, which allows rules to be tested independently of
+the system implementing Cloudlog, without having to load data to databases, launch clusters etc."
+[[:section {:title "simulate-with"}]]
+"The `simulate-with` function accepts the following arguments:
+1. A single rule function to be simulated, and
+2. Zero or more facts, making up the test environmnet for the simulation.
+It returns a set of tuples, representing the different values the rule gets given the facts.
+For example:"
+(fact
+ (simulate-with timeline
+                [:test/follows "alice" "bob"]
+                [:test/follows "alice" "charlie"]
+                [:test/tweeted "bob" "hello"]
+                [:test/tweeted "charlie" "hi"]
+                [:test/tweeted "david" "boo"])
+ => #{["alice" "hello"]
+      ["alice" "hi"]})
+[[:section {:title "Under the Hood"}]]
+"`simulate-with` is merely a combination of two lower-level functions: `simulate*` and `with*`:"
+[[:reference {:refer "cloudlog.core/simulate-with"}]]
+
+[[:subsection {:title "with*"}]]
+"The `with` is replaced with a call to the `with*` function, which translates a *sequence of facts* to a map from
+fact names and arities to sets of value tuples.  For example:"
+(fact
+ (with* [[:test/follows "alice" "bob"]
+         [:test/tweeted "bob" "hello"]
+         [:test/follows "bob" "charlie"]])
+ => {[:test/follows 2] #{["alice" "bob"]
+                         ["bob" "charlie"]}
+     [:test/tweeted 2] #{["bob" "hello"]}})
+
+[[:reference {:refer "cloudlog.core/with*"}]]
+
+[[:subsection {:title "simulate*"}]]
+"This map is then given as a parameter to `simulate*` -- the function that the `simulate` macro evaluates to, along
+with the rule function to be simulated.
+
+A simple rule is simulated by applying tuples from the set corresponding to the rule's source-fact,
+and then aggregating the results."
+(fact
+ (simulate* foo-yx {[:test/foo 2] #{[1 2] [3 4]}}) => #{[2 1] [4 3]})
+
+"In rules with joins, the continuations are followed."
+(fact
+ (simulate* timeline (with* [[:test/follows "alice" "bob"]
+                             [:test/tweeted "bob" "hello"]]))
+ => #{["alice" "hello"]})
+
+[[:reference {:refer "cloudlog.core/simulate*"}]]
+
+[[:chapter {:title "fact-table: Get a Fully-Qualified Name for a Fact"}]]
+"In an implementation of a Cloudlog engine it is necessary, given a `:source-fact` meta of a rule, to know
+which real-world resources (tables, queues etc) are associated with this fact.  Doing so
+consistently is important to get different references to the same fact to work against the same resources.
+
+The function `fact-table` takes a `[name arity]` pair that is given as the `:source-fact` of a rule (or a continuation)
+and returns a string representing this fact.
+
+For raw facts (represented by Clojure keywords, e.g., `:test/follows`), the returned string is simply the 
+fully qualified name of the keyword:"
+(fact
+ (-> timeline meta :source-fact fact-table) => "test/follows")
+
+"For a derived fact, represented as a name of a rule, the returned string is the 
+fully qualified name of the rule."
+(fact
+ (-> trending meta :continuation
+     meta :source-fact fact-table) => "cloudlog.core_test/timeline")
