@@ -98,3 +98,6 @@
                                   (simulate* (with-meta next-rule (meta cont)) factmap)))))
       ;else
       after-first)))
+
+(defn simulate-with [rule & facts]
+  (simulate* rule (with* facts)))
