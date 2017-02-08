@@ -278,5 +278,8 @@ and the output paramter."
       => #{[1234 "World peace starts with a small Hello!"]
            [2345 "Foo goes into a Bar..."]})
 
+"Definition:"
+[[:reference {:refer "cloudlog.core/defclause"}]]
+
 [[:file {:src "test/cloudlog/core_test_sim.clj"}]]
 [[:file {:src "test/cloudlog/core_test_facttable.clj"}]]
