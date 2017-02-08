@@ -70,7 +70,7 @@
               <nav data-gumshoe-header>
                 <ul data-gumshoe>
                   <a data-scroll class="top" href="#page-top">TOP</a>
-                  <li><a class="chapter" data-scroll="" href="#introduction"><h4>1 &nbsp; Introduction</h4></a></li><li><a class="chapter" data-scroll="" href="#universe"><h4>2 &nbsp; universe</h4></a></li><li><a class="chapter" data-scroll="" href="#intersection"><h4>3 &nbsp; intersection</h4></a></li><li><a class="chapter" data-scroll="" href="#subset"><h4>4 &nbsp; subset?</h4></a></li><li><a class="chapter" data-scroll="" href="#super-union"><h4>5 &nbsp; super-union</h4></a></li>
+                  <li><a class="chapter" data-scroll="" href="#introduction"><h4>1 &nbsp; Introduction</h4></a></li><li><a class="chapter" data-scroll="" href="#universe"><h4>2 &nbsp; universe</h4></a></li><li><a class="chapter" data-scroll="" href="#intersection"><h4>3 &nbsp; intersection</h4></a></li><li><a class="chapter" data-scroll="" href="#subset"><h4>4 &nbsp; subset?</h4></a></li><li><a class="chapter" data-scroll="" href="#super-union"><h4>5 &nbsp; super-union</h4></a></li><li><a class="chapter" data-scroll="" href="#empty"><h4>6 &nbsp; empty?</h4></a></li>
                 </ul>
               </nav>
             </div>
@@ -79,7 +79,7 @@
           <div class="toc">
               <nav>
                 <ul>
-                  <li><a class="chapter" data-scroll="" href="#introduction"><h4>1 &nbsp; Introduction</h4></a></li><li><a class="chapter" data-scroll="" href="#universe"><h4>2 &nbsp; universe</h4></a></li><li><a class="chapter" data-scroll="" href="#intersection"><h4>3 &nbsp; intersection</h4></a></li><li><a class="chapter" data-scroll="" href="#subset"><h4>4 &nbsp; subset?</h4></a></li><li><a class="chapter" data-scroll="" href="#super-union"><h4>5 &nbsp; super-union</h4></a></li>
+                  <li><a class="chapter" data-scroll="" href="#introduction"><h4>1 &nbsp; Introduction</h4></a></li><li><a class="chapter" data-scroll="" href="#universe"><h4>2 &nbsp; universe</h4></a></li><li><a class="chapter" data-scroll="" href="#intersection"><h4>3 &nbsp; intersection</h4></a></li><li><a class="chapter" data-scroll="" href="#subset"><h4>4 &nbsp; subset?</h4></a></li><li><a class="chapter" data-scroll="" href="#super-union"><h4>5 &nbsp; super-union</h4></a></li><li><a class="chapter" data-scroll="" href="#empty"><h4>6 &nbsp; empty?</h4></a></li>
                 </ul>
               </nav>
           </div>
@@ -93,7 +93,10 @@
   (fact
    union =not=&gt; empty? ; The super-union is still not the universal set
    (interset/subset? AB union) =&gt; true
-   (interset/subset? BC union) =&gt; true))</code></pre></div>
+   (interset/subset? BC union) =&gt; true))</code></pre></div><div><span id="empty"></span><h2><b>6 &nbsp;&nbsp; empty?</b></h2></div><div><p>It is sometimes useful to test if an interset is empty.  For example, a Cloudlog fact designated for an empty audience can be dropped. By default we consider intersets to be non-empty, i.e., we consider named sets to be intersecting, unless otherwise specified.</p></div><div class="code"><pre><code class="clojure">(interset/empty? #{:a :b}) =&gt; false</code></pre></div><div><p>An interset is empty if it is intersected with the <code>:empty</code> set.</p></div><div class="code"><pre><code class="clojure">(interset/empty? #{:a :empty :b}) =&gt; true</code></pre></div><div><p>Another case in which an interset is considered empty is when it contains two disjoined named sets. A named set is considered a <em>partition</em> if it has the form <code>&#91;:some-key= &quot;some-value&quot;&#93;</code>.</p></div><div class="code"><pre><code class="clojure">(interset/partition? [:something= 123]) =&gt; true
+ (interset/partition? :something) =&gt; false
+ (interset/partition? [:something 123]) =&gt; false</code></pre></div><div><p>An interset is considered empty if it is an intersection of two partitions of the same key, with different values.</p></div><div class="code"><pre><code class="clojure">(interset/empty? #{:a [:foo= &quot;foo&quot;] [:foo= &quot;bar&quot;]}) =&gt; true
+ (interset/empty? #{:a [:foo= &quot;foo&quot;]}) =&gt; false</code></pre></div><div class="code"><pre><code class="clojure"></code></pre></div>
         </div>
       </div>
     </div>
