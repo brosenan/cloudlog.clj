@@ -102,7 +102,7 @@
 (defn simulate-with [rule & facts]
   (simulate* rule (with* facts)))
 
-(defmulti fact-table (fn [[name arity]] (println "***" name) (class name)))
+(defmulti fact-table (fn [[name arity]] (class name)))
 
 (defmethod fact-table clojure.lang.Named [[name arity]]
   (str (namespace name) "/" (clojure.core/name name)))
