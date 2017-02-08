@@ -67,3 +67,28 @@ intersets joined by this operator, and by that be a superset of their union."
    union =not=> empty? ; The super-union is still not the universal set
    (interset/subset? AB union) => true
    (interset/subset? BC union) => true))
+
+
+[[:chapter {:title "empty?"}]]
+"It is sometimes useful to test if an interset is empty.  For example, a Cloudlog fact designated for an empty audience
+can be dropped.
+By default we consider intersets to be non-empty, i.e., we consider named sets to be intersecting, unless otherwise specified."
+(fact
+ (interset/empty? #{:a :b}) => false)
+
+"An interset is empty if it is intersected with the `:empty` set."
+(fact
+ (interset/empty? #{:a :empty :b}) => true)
+
+"Another case in which an interset is considered empty is when it contains two disjoined named sets.
+A named set is considered a *partition* if it has the form `[:some-key= \"some-value\"]`."
+(fact
+ (interset/partition? [:something= 123]) => true
+ (interset/partition? :something) => false
+ (interset/partition? [:something 123]) => false)
+"An interset is considered empty if it is an intersection of two partitions of the same key, with different values."
+(fact
+ (interset/empty? #{:a [:foo= "foo"] [:foo= "bar"]}) => true
+ (interset/empty? #{:a [:foo= "foo"]}) => false)
+
+(comment)
