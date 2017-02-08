@@ -91,4 +91,3 @@ A named set is considered a *partition* if it has the form `[:some-key= \"some-v
  (interset/empty? #{:a [:foo= "foo"] [:foo= "bar"]}) => true
  (interset/empty? #{:a [:foo= "foo"]}) => false)
 
-(comment)
