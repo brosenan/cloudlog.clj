@@ -22,4 +22,8 @@
                     "interset"
                     {:input "test/cloudlog/interset_test.clj"
                      :title "interset"
-                     :subtitle "Intersection Sets"}}})
+                     :subtitle "Intersection Sets"}
+                    "events"
+                    {:input "test/cloudlog/events_test.clj"
+                     :title "events"
+                     :subtitle "Event Processing"}}})
