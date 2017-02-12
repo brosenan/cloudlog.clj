@@ -54,7 +54,7 @@ representing such a fact and applies the rule function associated with the event
 
 "For a simple rule, the result is a sequence of derived fact."
 (fact
- (let [em (emitter foo-yx)]
+ (let [em (emitter foo-yx #{})]
    (em (event :fact "test/foo" 2 [3]))
    => [(event :fact "cloudlog.core_test/foo-yx" 3 [2])]))
 
@@ -74,17 +74,60 @@ Our implementation does not emit the rule syntactically.  Instead it provides a 
 that contains its underlying data.  But we still treat it as a rule."
 
 (fact
- (let [em (emitter timeline)]
+ (let [em (emitter timeline #{})]
    (em (event :fact "test/follows" "alice" ["bob"]))
    => [(event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"])]))
-"The `:name` component in the produced events is derived from the name of the rule, a 'bang' (!) and
+"The `:name` component in the produced events is derived from the name of the rule, a 'bang' (`!`) and
 the index of the link that emitted this event in the overall rule.  An emitter always represents
 the first link in a rule, so this value is always 0."
 
-[[:chapter {:title "multiplier: Create a Function Applying Rules to Facts"}]]
+[[:section {:title "Readers and Writers"}]]
+"The only parts of the event that are not easy to understand are the `:readers` and `:writers` keys.
+The values associated with these keys are conceptually *sets of users*.
+`:writers` represents the set of users who *may have created* the event.
+Each user in this set has permission to create a similar event that, e.g., can cancel the effect of this one
+(e.g., by creating an event with the same `:key`, `:data` `:readers` and `writers`
+but with a complement `:change` value) and to replace the underlying datum with another one
+(e.g., by creating an event with the same `:key`, `:readers` and `:writers` but different `:data`.
+The `:writers` set is key to how Clojure applications manage *integrity*."
+
+"When a rule is applied to a fact, the resulting event carries the `:writers` set associated
+with the rule.  The `emitter` function takes its `:writers` set as a second argument.
+Typically, an application's writer is represented by its Internet domain"
+(fact
+ (let [em (emitter foo-yx #{"example.com"})]
+   (em (event :fact "test/foo" 2 [3] :writers #{:foo :bar}))
+   => [(event :fact "cloudlog.core_test/foo-yx" 3 [2] :writers #{"example.com"})]))
+
+"`:readers` represents a set of users allowed to read an axiom. We will revisit `:readers` when discussing
+[multiplier](#multiplier)."
+
+"Rules may pose requirements for `:writers` and `:readers`.
+To support this, we pass them as metadata on the data."
+(fact
+ (let [some-rule (fn [vec]
+                   (when-not (= (meta vec) {:writers #{:w}
+                                            :readers #{:r}})
+                     (throw (Exception. "Did not get readers and writers as meta"))))
+       em (emitter some-rule #{})]
+   (em (event :fact "something" 1 [2 3] :writers #{:w} :readers #{:r}))
+   => irrelevant))
+
+[[:chapter {:title "multiplier: Create a Function Applying Rules to Facts" :tag "multiplier"}]]
 "The lowest level of event processing is taking two corresponding events 
 (i.e., an event for a fact and a rule with the same key) and producing a collection of events
 that are produced from this combination."
+
+"A multiplier is constructed based on a rule function, a number (>0) representing the link in the rule,
+and a `:writers` set fot the rule."
+(def mult1 (multiplier timeline 1 #{}))
+
+"The returned function takes two arguments: a *rule event* and a matching *fact event*.
+It returns a sequence of events created by this combination."
+(fact
+ (mult1 (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"])
+        (event :fact "test/tweeted" "bob" ["something"]))
+ => [(event :fact "cloudlog.core_test/timeline" "alice" ["something"])])
 
 "We call this unit a *multiplier*, because it multiplies the `:change` field of the rule and the fact event.
 Imagine we have `n` facts and `m` rules with a certain key.  In order to have all possible derived events
