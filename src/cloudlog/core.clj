@@ -92,8 +92,9 @@
   (apply merge-with set/union
          (for [fact seq]
            (let [fact-name (first fact)
+                 metadata (meta fact)
                  arity (-> fact rest count)]
-             {[fact-name arity] #{(rest fact)}}))))
+             {[fact-name arity] #{(with-meta (vec (rest fact)) metadata)}}))))
 
 (defn simulate* [rule factmap]
   (let [source-fact (-> rule meta :source-fact)
@@ -119,3 +120,7 @@
         name (-> name meta :name)]
     (str ns "/" name)))
 (prefer-method fact-table clojure.lang.Named clojure.lang.IFn)
+
+(defmacro by [set body]
+  `(when (contains? (-> ~'$input$ meta :writers) ~set)
+     ~body))

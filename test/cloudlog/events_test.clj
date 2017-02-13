@@ -81,7 +81,7 @@ that contains its underlying data.  But we still treat it as a rule."
 the index of the link that emitted this event in the overall rule.  An emitter always represents
 the first link in a rule, so this value is always 0."
 
-[[:section {:title "Readers and Writers"}]]
+[[:section {:title "Readers and Writers" :tag "writers"}]]
 "The only parts of the event that are not easy to understand are the `:readers` and `:writers` keys.
 The values associated with these keys are conceptually *sets of users*.
 `:writers` represents the set of users who *may have created* the event.
@@ -205,9 +205,12 @@ taking both `dating-matches-event` as the rule-event and `ticket-by-gender-and-l
 What shall the `:reader` set of the result be?  That of the rule, conveying Bob's wishes, or that of the fact,
 conveying Alice's wishes?"
 
-"The `:readers` set of the resulting events will be an *intersection* of both `:readers` sets, ([which
-is actually a union of the Clojure sets](interset.html#intersection))."
+"The `:readers` set of the resulting events will be an *intersection* of both `:readers` sets, (which
+is actually a [union of the Clojure sets](interset.html#intersection))."
 (fact
  (let [mult (multiplier dating-matches 1 #{})
        ev (first (mult dating-matches-event ticket-by-gender-and-location-event))]
    (:readers ev) => #{:male [:user= "bob"] :long-time-users}))
+"The resulting `:readers` set is an intersection of `:male` and `[:user= \"bob\"]`, which Bob is a member of,
+with `:long-time-users`, which Bob is not a member of.  This places Bob outside the intersection, and therefore
+unable to see the resulting fact (which is what we expect)."

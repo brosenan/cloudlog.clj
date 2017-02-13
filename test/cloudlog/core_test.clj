@@ -92,7 +92,7 @@ assert a certain relationship between the bound variable and the expression to i
 A `when` or `when-not` guards are just like predicates that pass or fail depending on the 
 (Clojure-level) predicate given to them."
 
-[[:section {:title "Joins"}]]
+[[:section {:title "Joins" :tag "joins"}]]
 "Even with guards, rules are still limited to considering only a single fact.
 Sometimes we need to draw a conclusion based on a combination of facts.
 A classical example is applications such as [Twitter](https://twitter.com), in which users can:
@@ -204,7 +204,7 @@ of users identified as \"influencers\", we would probably write a rule of the fo
   [:test/influencer influencer]
   [timeline influencer tweet])
 
-"Now we can simulate our rule (using `simulate-with`, see section {{simulate-with}}):"
+"Now we can simulate our rule (using [simulate-with](#simulate-with)):"
 (fact
  (simulate-with trending
                 [:test/influencer "gina"]
@@ -214,6 +214,47 @@ of users identified as \"influencers\", we would probably write a rule of the fo
                 [timeline "some-lamo" "orange is the new bananna"])
  => #{["purple is the new black!"]
       ["pink is the new purple!"]})
+
+[[:section {:title "Integrity"}]]
+"> Integrity of information refers to protecting information from being modified by unauthorized parties.
+([Confidentiality, Integrity, Availability: The Three Components of the CIA Triad](http://security.blogoverflow.com/2012/08/confidentiality-integrity-availability-the-three-components-of-the-cia-triad/))
+
+Cloudlog takes a liberal approach to integrity.  Any user can publish any fact, as long as he or she is a member of the fact's *writers set*.
+We explain writer sets in [our discussion of events](events.html#writers), but for now we can just say the writer set is a piece of
+information telling us to whom a certain fact is attributed to.
+Any user within the fact's writer set can, for example, delete it and replace it with another.
+
+When a rule is applied to a fact, it takes ownership over the result (see [events](events.html#writers)).
+This makes the rule responsible for the integrity of the result."
+
+"To allow rules to specify integrity requirements we introduce the `by` guard.
+Look at the `timeline` rule defined [above](#joins).  The `:test/tweeted` fact indicates the user who tweeted.
+However, there is no guarantee that the user who appears in the fact as the twitter is indeed the user who created that fact.
+For example, consider the fact:"
+(comment
+  [:test/tweeted "alice" "I hate Bob!"])
+"What guarantee do we have that it is Alice who created this fact, and not Eve, who's been trying to 
+break up Alice and Bob for years?
+
+The answer is we don't actually know that, because the Cloudlog is liberal about integrity, and allows any user 
+(including Eve) to create any fact (including this one).
+
+So what do we do?  Do we allow Eve to succeed in her evil plan?
+No, we do not.  This is where the `by` guard comes to save the day (and Alice's love life).
+Below is a secure version of the `timeline` rule, that only takes into account tweets made by the advertized user."
+(defrule secure-timeline [user tweet]
+  [:test/follows user author]
+  [:test/tweeted author tweet]
+  (by [:user= author]))
+
+"Now, if both Eve and Alice create tweets alegedly made by Alice, 
+Bob (who follows Alice) will only see the ones genuinly made by Alice."
+(fact
+ (simulate-with secure-timeline
+                [:test/follows "bob" "alice"]
+                (with-meta [:test/tweeted "alice" "I love Bob"] {:writers #{[:user= "alice"]}})
+                (with-meta [:test/tweeted "alice" "I hate Bob"] {:writers #{[:user= "eve"]}}))
+ => #{["bob" "I love Bob"]})
 
 [[:chapter {:title "defclause: Top-Down Logic"}]]
 "Regular rules defined using `defrule` define *bottom-up logic*.  Bottom-up logic is applied when facts are added or removed,

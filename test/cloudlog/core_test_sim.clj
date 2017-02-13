@@ -41,6 +41,11 @@ fact names and arities to sets of value tuples.  For example:"
                          ["bob" "charlie"]}
      [:test/tweeted 2] #{["bob" "hello"]}})
 
+"`with*` moves metadata placed on facts over to the tuples the fact is converted to."
+(fact
+ (let [with-map (with* [(with-meta [:test/baz 1 2 3] {:foo "bar"})])]
+   (-> (with-map [:test/baz 3]) first meta :foo) => "bar"))
+
 [[:reference {:refer "cloudlog.core/with*"}]]
 
 [[:subsection {:title "simulate*"}]]
