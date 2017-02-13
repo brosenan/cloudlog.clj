@@ -138,3 +138,76 @@ one for the fact, with `:change` value of `n`, and one for the rule with `:chang
 Now if we introduce these two events to the multiplier function, we would like to get the same result as before,
 that is, applying the rule to the fact `n*m` times.  To achieve this, the multiplier function multiplies the
 `:change` values, so that every event it returns has a `:change` value of `n*m`."
+(fact
+ (mult1 (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"] :change 2)
+        (event :fact "test/tweeted" "bob" ["something"] :change 3))
+ => [(event :fact "cloudlog.core_test/timeline" "alice" ["something"] :change 6)])
+
+[[:section {:title "Confidentiality"}]]
+"A multiplier is a meeting place of facts with rules, which in turn are derived from other facts.
+Such a meeting place is where the *confidentiality* of the system is put to the test."
+
+"Consider a dating service, where users can open *tickets* with their personal details,
+set up a *watch* for tickets that match certain criteria (for simplicity, let's say, gender, location, and age-range).
+A rule for creating search results can look like this:"
+(declare ticket-by-gender-and-location)
+
+(defrule dating-matches [watch-id ticket-id]
+  [:test/watch watch-id gender loc min-age max-age]
+  [ticket-by-gender-and-location [gender loc] ticket-id age]
+  (when (and (<= age max-age)
+              (>= age min-age))))
+
+"`ticket-by-gender-and-location` is an indexing of raw `:test/ticket`, performed by the following rule:"
+(defrule ticket-by-gender-and-location [[gender loc] ticket-id age]
+  [:test/ticket ticket-id gender age loc])
+
+"People openning tickets on dating services often wish their tickets to be limited to a certain
+set of users.  Similarly, people setting up a watch often wish to keep their preferences secret.
+These preferences are recorded in the `:readers` set of each fact.
+`:readers` is an [interset](interset.html) specifying who can read this fact.
+Each element in `:readers` represents a *named set* of users, and the *readers set* for the event
+is an intersection of all these named sets.
+
+In Cloudlog, rules are not responsible for confidentiality; the Cloudlog implementation is.
+Imagine a Alice openning a ticket in the dating service, willing to make it visible only to 
+`:male` `:long-time-users` (i.e., to members of the intersection of the `:male` and `:long-time-users`
+named sets).  The event will look like this:"
+(def alices-ticket-event
+  (event :fact ":test/ticket" 1234 [:female 35 "NYC"]
+         :readers #{:male :long-time-users}))
+
+"The `emitter` applying the `ticket-by-gender-and-location` rule will keep the `:readers` set as-is:"
+(def ticket-by-gender-and-location-event
+  (let [em (emitter ticket-by-gender-and-location #{"dating-app.com"})]
+    (first (em alices-ticket-event))))
+(fact
+ (:readers ticket-by-gender-and-location-event) => #{:male :long-time-users})
+
+"When Bob looks for dates like Alice, he creates `:test/watch` with an event looking like this:"
+(def bobs-watch-event
+  (event :fact ":test/watch" 9876 [:female "NYC" 30 40]
+         :readers #{:male [:user= "bob"]}))
+"He places only himself in the `:readers` set, so no one else will know he's looking, or what he's looking for.
+Bob can be seen as an intersection of all the named sets he's a member of.  One such set is `[:user= \"bob\"]`,
+a partition set that contains only him, but Bob is also a member of the `:male` set.
+Note that Bob is not a member of the `:long-time-users` set, since he's new to the service.
+
+Here too, the `emitter` function does not change the `:readers` set."
+(def dating-matches-event
+  (let [em (emitter dating-matches #{"dating-app.com"})]
+    (first (em bobs-watch-event))))
+(fact
+ (:readers dating-matches-event) => #{:male [:user= "bob"]})
+
+"Now is where things get interesting.  When the second link of the `dating-matches` rule kicks in,
+taking both `dating-matches-event` as the rule-event and `ticket-by-gender-and-location-event` as its fact event.
+What shall the `:reader` set of the result be?  That of the rule, conveying Bob's wishes, or that of the fact,
+conveying Alice's wishes?"
+
+"The `:readers` set of the resulting events will be an *intersection* of both `:readers` sets, ([which
+is actually a union of the Clojure sets](interset.html#intersection))."
+(fact
+ (let [mult (multiplier dating-matches 1 #{})
+       ev (first (mult dating-matches-event ticket-by-gender-and-location-event))]
+   (:readers ev) => #{:male [:user= "bob"] :long-time-users}))
