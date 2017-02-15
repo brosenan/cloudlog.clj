@@ -214,3 +214,46 @@ is actually a [union of the Clojure sets](interset.html#intersection))."
 "The resulting `:readers` set is an intersection of `:male` and `[:user= \"bob\"]`, which Bob is a member of,
 with `:long-time-users`, which Bob is not a member of.  This places Bob outside the intersection, and therefore
 unable to see the resulting fact (which is what we expect)."
+
+[[:section {:title "Timestamps"}]]
+"Events are stored with a primary key that combines `:key` and `:ts`.  Out of these, `:key` is used for [sharding](https://en.wikipedia.org/wiki/Shard_%28database_architecture%29), and `:ts` is used for sorting.
+Typically, we will want to query events that share `:name` and `:key` values together, so it makes sense to store all of them together.
+The `:ts` provides an additional key, so we can refer to specific events that share `:name` and `:key`."
+
+"Some event processing systems like [Apache Storm](http://storm.apache.org/) guarantee [at least once](http://storm.apache.org/releases/1.0.0/Guaranteeing-message-processing.html) semantics.
+The advantage of this approach is that they guarantee that everything that needs to be processed gets processed, and do this at
+relatively low cost.  The disadvantage is that if we use such a mechanism we need to be able to cope with processing being done more than once.
+Cloudlog.clj copes with this in two ways:
+1. All computation in Cloudlog.clj is declarative, meaning that if you call a rule function twice with the same input you are guaranteed to get the same output.
+2. We use a consistent unique key for each result, so that if we get the same result a second time, the new result gets \"swallowed\" by the old result.
+
+The unique ID we use is the timestamp -- `:ts`.  Timestamps are given to *fact events* when they are created.
+Each timestamp in the system, whether it refers to a raw fact, derived fact or rule events, is always originally
+a timestamp given to a raw fact when it was created.  This takes the computation time out of the equation for calculating
+these timestamps."
+
+"An `emitter` function simply moves the `:ts` attribute from its input event to its output."
+(fact
+ (let [em (emitter foo-yx #{})
+       ev (first (em (event :fact ":test/foo" 1 [2] :ts 1234)))]
+   (:ts ev) => 1234))
+
+"For a `multiplier`, the question of which `:ts` value to produce is more complicated.
+Each of the input events (the rule and the fact) has a timestamp, so which one should we use?
+Because we want each timestamp to be a real timestamp (from a raw fact event), we need to take
+exactly one of them.  We take the one from the fact."
+(fact
+ (let [mult (multiplier timeline 1 #{})
+       ev (first (mult (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"] :ts 2345)
+                       (event :fact ":test/tweeted" "bob" ["hello"] :ts 3456)))]
+   (:ts ev) => 3456))
+
+"Why? because we need to keep the value unique per `:key`.
+Consider the above example.  If we take the rule `:ts` value, the `:ts` for each entry in Alice's timeline
+will be the `:ts` of the rule that was applied, which takes its `:ts` from the `:test/follows` fact.
+This means that every tweet made by Bob will appear in Alice's timeline with the same `:ts` value,
+and hence tweets will overrun one another.
+
+But what guarantee do we have that if we take the fact's `:ts` we do not get into such a situation?
+There is no hard guarantee for that.  Hoever, the whole point of using rules it to [denormalize](https://en.wikipedia.org/wiki/Denormalization) the data so that it is searchable with different keys.  It is pointless to have a rule that keeps the same `:key`.
+Such rules can be easily converted to [clauses](core.html#defclause), which do not require redundant information to be stored."

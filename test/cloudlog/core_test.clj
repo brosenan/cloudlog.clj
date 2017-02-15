@@ -229,7 +229,7 @@ This makes the rule responsible for the integrity of the result."
 
 "To allow rules to specify integrity requirements we introduce the `by` guard.
 Look at the `timeline` rule defined [above](#joins).  The `:test/tweeted` fact indicates the user who tweeted.
-However, there is no guarantee that the user who appears in the fact as the twitter is indeed the user who created that fact.
+However, there is no guarantee that the user who appears in the fact as the author of the tweet is indeed the user who created that fact.
 For example, consider the fact:"
 (comment
   [:test/tweeted "alice" "I hate Bob!"])
@@ -237,7 +237,7 @@ For example, consider the fact:"
 break up Alice and Bob for years?
 
 The answer is we don't actually know that, because the Cloudlog is liberal about integrity, and allows any user 
-(including Eve) to create any fact (including this one).
+(including Eve) to create any fact (including tweets by Alice).
 
 So what do we do?  Do we allow Eve to succeed in her evil plan?
 No, we do not.  This is where the `by` guard comes to save the day (and Alice's love life).
@@ -256,7 +256,7 @@ Bob (who follows Alice) will only see the ones genuinly made by Alice."
                 (with-meta [:test/tweeted "alice" "I hate Bob"] {:writers #{[:user= "eve"]}}))
  => #{["bob" "I love Bob"]})
 
-[[:chapter {:title "defclause: Top-Down Logic"}]]
+[[:chapter {:title "defclause: Top-Down Logic" :tag "defclause"}]]
 "Regular rules defined using `defrule` define *bottom-up logic*.  Bottom-up logic is applied when facts are added or removed,
 creating or removing derived facts as needed.
 Unfortunately, this is often not enough.  One limitation of bottom-up reasoning (logic)
@@ -281,7 +281,7 @@ The following clause does just that."
   [index-docs first-kw id]
   [:test/doc id text]
   (let [lc-text (clojure.string/lower-case text)])
-  (when (every? #(.contains lc-text %) (rest keywords))))
+  (when (every? #(clojure.string/includes? lc-text %) (rest keywords))))
 
 "`multi-keyword-search` is the name of the function to be created (similar to a rule function).
 `:test/multi-keyword-search` is the *predicate* to be associated with this clause.
