@@ -11,11 +11,11 @@
                            {:writers (:writers event)
                             :readers (:readers event)}))]
       (merge
-       (if (-> rulefunc meta :target-fact)
-                    (merge event {:name (-> rulefunc meta :target-fact fact-table)})
+       (merge event (if (-> rulefunc meta :target-fact)
+                      {:name (-> rulefunc meta :target-fact fact-table)}
                                         ; else
-                    (merge event {:kind :rule
-                                  :name (str (fact-table [rulefunc]) "!" link)}))
+                      {:kind :rule
+                       :name (str (fact-table [rulefunc]) "!" link)}))
        {:key (first data)
         :data (rest data)
         :writers writers
@@ -43,12 +43,13 @@
     ; else
     (-> rulefunc meta :source-fact fact-table)))
 
-
 (defn matcher [rulefunc link db-chan]
   (let [mult (multiplier rulefunc link)]
     (fn [ev out-chan]
       (async/go
-        (let [db-reply-chan (async/chan 1000)]
+        (let [db-reply-chan (async/chan 1000)
+              match-event (fn [kind name multiply]
+                            )]
           (if (= (:kind ev) :fact)
             (do
               (async/>! db-chan [{:kind :rule
