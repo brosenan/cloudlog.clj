@@ -15,7 +15,10 @@ The following rule -- `foo-yx`, matches facts of the form `[:test/foo x y]` (fac
 we call `x` and `y`), and for each such fact it creates a new fact of the form `[foo-yz y x]`."
 
 (defrule foo-yx [y x]
-     [:test/foo x y])
+  [:test/foo x y] (by-anyone))
+
+"The `(by-anyone)` guard means that we do not care on behalf of whom this fact was published.
+Typically, we will care about this, but we delay discussion on this to our discussion of [data integrity](#integrity)."
 
 "What `defrule` actually does is define a Clojure function that, when given the arguments for the source fact (in our case, `:test/foo`),
 it returns a sequence of bindings for the target fact (`foo-yx`)."
@@ -39,7 +42,7 @@ the input fact, and values are compared.  If the values differ, the rule is not 
 
 For example, the following rule is similar to `foo-yx`, only that it assumes that `x == 1`."
 (defrule foo-unify [x 1]
-  [:test/foo 1 x])
+  [:test/foo 1 x] (by-anyone))
 
 "For `[1 2]`, we will get the same result as before:"
 (fact
@@ -55,7 +58,7 @@ but cannot do more.  **Guards** fix this by allowing (purely-functional) Clojure
 Guards are Clojure forms such as `let`, `for` or `when`.  The example below uses `let` to create a new binding
 (variable `z`), calculated as the sum of `x` and `y`:"
 (defrule foo-let [z]
-     [:test/foo x y]
+     [:test/foo x y] (by-anyone)
      (let [z (+ x y)]))
 
 "The result is as you would expect."
@@ -69,7 +72,7 @@ Guards are Clojure forms such as `let`, `for` or `when`.  The example below uses
 
 (def stop-words #{"a" "is" "to" "the"})
 (defrule index-docs [word id]
-     [:test/doc id text]
+     [:test/doc id text] (by-anyone)
      (for [word (clojure.string/split text #"[,!.? ]+")])
      (let [word (clojure.string/lower-case word)])
      (when-not (contains? stop-words word)))
@@ -106,8 +109,8 @@ interested in tweets made by users we follow.
 
 Cloudlog rules can depend on more than just the source-fact."
 (defrule timeline [user tweet]
-     [:test/follows user author]
-     [:test/tweeted author tweet])
+     [:test/follows user author] (by-anyone)
+     [:test/tweeted author tweet] (by-anyone))
 
 "In such cases, the rule function cannot produce the result right away.
 The above rule's source fact is `:test/follows`:"
@@ -162,16 +165,16 @@ since it does not provide value for `user`.
 We provide a compile-time error in such cases."
 (fact
  (macroexpand `(defrule timeline [user tweet]
-                 [:test/tweeted author tweet]
-                 [:test/follows user author]))
+                 [:test/tweeted author tweet] (by-anyone)
+                 [:test/follows user author] (by-anyone)))
    => (throws "variables #{cloudlog.core_test/user} are unbound in the key for :test/follows"))
 
 "Of-course, guards are supported with joins."
 (defrule foobar-range [w]
-     [:test/foo x y]
+     [:test/foo x y] (by-anyone)
      (let [z (+ x y)])
      (for [w (range z)])
-     [:test/bar z w])
+     [:test/bar z w] (by-anyone))
 
 "In the above rule we take `x` and `y` from fact `:test/foo`, sum them to get `z`, and span the range `0..z`.
 We return `w` values for which there is a fact `[:test/bar z w]`.
@@ -201,8 +204,8 @@ This fact can then be used in other rules.
 For example, if we wish to create a \"trending\" timeline, aggregating the timelines 
 of users identified as \"influencers\", we would probably write a rule of the following form:"
 (defrule trending [tweet]
-  [:test/influencer influencer]
-  [timeline influencer tweet])
+  [:test/influencer influencer] (by-anyone)
+  [timeline influencer tweet] (by-anyone))
 
 "Now we can simulate our rule (using [simulate-with](#simulate-with)):"
 (fact
@@ -215,7 +218,7 @@ of users identified as \"influencers\", we would probably write a rule of the fo
  => #{["purple is the new black!"]
       ["pink is the new purple!"]})
 
-[[:section {:title "Integrity"}]]
+[[:section {:title "Integrity" :tag "integrity"}]]
 "> Integrity of information refers to protecting information from being modified by unauthorized parties.
 ([Confidentiality, Integrity, Availability: The Three Components of the CIA Triad](http://security.blogoverflow.com/2012/08/confidentiality-integrity-availability-the-three-components-of-the-cia-triad/))
 
@@ -243,15 +246,14 @@ So what do we do?  Do we allow Eve to succeed in her evil plan?
 No, we do not.  This is where the `by` guard comes to save the day (and Alice's love life).
 Below is a secure version of the `timeline` rule, that only takes into account tweets made by the advertized user."
 (defrule secure-timeline [user tweet]
-  [:test/follows user author]
-  [:test/tweeted author tweet]
-  (by [:user= author]))
+  [:test/follows user author] (by [:user= user])
+  [:test/tweeted author tweet] (by [:user= author]))
 
 "Now, if both Eve and Alice create tweets alegedly made by Alice, 
 Bob (who follows Alice) will only see the ones genuinly made by Alice."
 (fact
  (simulate-with secure-timeline
-                [:test/follows "bob" "alice"]
+                (with-meta [:test/follows "bob" "alice"] {:writers #{[:user= "bob"]}})
                 (with-meta [:test/tweeted "alice" "I love Bob"] {:writers #{[:user= "alice"]}})
                 (with-meta [:test/tweeted "alice" "I hate Bob"] {:writers #{[:user= "eve"]}}))
  => #{["bob" "I love Bob"]})

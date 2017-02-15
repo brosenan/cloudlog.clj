@@ -156,7 +156,7 @@ A rule for creating search results can look like this:"
   [:test/watch watch-id gender loc min-age max-age]
   [ticket-by-gender-and-location [gender loc] ticket-id age]
   (when (and (<= age max-age)
-              (>= age min-age))))
+             (>= age min-age))))
 
 "`ticket-by-gender-and-location` is an indexing of raw `:test/ticket`, performed by the following rule:"
 (defrule ticket-by-gender-and-location [[gender loc] ticket-id age]
@@ -241,7 +241,7 @@ these timestamps."
 "For a `multiplier`, the question of which `:ts` value to produce is more complicated.
 Each of the input events (the rule and the fact) has a timestamp, so which one should we use?
 Because we want each timestamp to be a real timestamp (from a raw fact event), we need to take
-exactly one of them.  We take the one from the fact."
+exactly one of them.  We take the one from the *fact*."
 (fact
  (let [mult (multiplier timeline 1 #{})
        ev (first (mult (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"] :ts 2345)

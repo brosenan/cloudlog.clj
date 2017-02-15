@@ -124,3 +124,6 @@
 (defmacro by [set body]
   `(when (contains? (-> ~'$input$ meta :writers) ~set)
      ~body))
+
+(defmacro by-anyone [body]
+  body)
