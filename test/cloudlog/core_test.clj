@@ -282,8 +282,8 @@ Cloudlog will not allow us to do this.  For example, if we forget to place a `by
 "The same goes for rules with joins:"
 (fact
  (macroexpand '(defrule secure-timeline [user tweet]
-  [:test/follows user author] (by-anyone)
-  [:test/tweeted author tweet]))
+                 [:test/follows user author] (by-anyone)
+                 [:test/tweeted author tweet]))
  => (throws "Rule is insecure. Link 1 is not checked."))
 
 [[:chapter {:title "defclause: Top-Down Logic" :tag "defclause"}]]
