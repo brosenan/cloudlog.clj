@@ -246,7 +246,7 @@ So what do we do?  Do we allow Eve to succeed in her evil plan?
 No, we do not.  This is where the `by` guard comes to save the day (and Alice's love life).
 Below is a secure version of the `timeline` rule, that only takes into account tweets made by the advertized user."
 (defrule secure-timeline [user tweet]
-  [:test/follows user author] (by [:user= user])
+  [:test/follows user author] (by-anyone)
   [:test/tweeted author tweet] (by [:user= author]))
 
 "Now, if both Eve and Alice create tweets alegedly made by Alice, 
@@ -254,9 +254,37 @@ Bob (who follows Alice) will only see the ones genuinly made by Alice."
 (fact
  (simulate-with secure-timeline
                 (with-meta [:test/follows "bob" "alice"] {:writers #{[:user= "bob"]}})
-                (with-meta [:test/tweeted "alice" "I love Bob"] {:writers #{[:user= "alice"]}})
-                (with-meta [:test/tweeted "alice" "I hate Bob"] {:writers #{[:user= "eve"]}}))
- => #{["bob" "I love Bob"]})
+                (with-meta [:test/tweeted "alice" "Alice loves Bob"] {:writers #{[:user= "alice"]}})
+                (with-meta [:test/tweeted "alice" "Alice hates Bob"] {:writers #{[:user= "eve"]}}))
+ => #{["bob" "Alice loves Bob"]})
+
+"Now we come back to `by-anyone` and why we had to use it all over the place.
+If we do not use a `by` guard on one of the source facts in a rule we put our application at risk
+of having unauthorized updates take effect. For example, in the `secure-timeline` rule above
+we checked the integrity of tweets, but \"forgot\" to check the integrity of following relationships.
+This mistake can help Eve get messages through to Bob although he does not follow her:"
+(fact
+ (simulate-with secure-timeline
+                (with-meta [:test/follows "bob" "eve"] {:writers #{[:user= "eve"]}})
+                (with-meta [:test/tweeted "eve" "Alice hates Bob"] {:writers #{[:user= "eve"]}}))
+ => #{["bob" "Alice hates Bob"]})
+"Both facts were submitted (legally) by Eve.  The only flaw was in our logic -- we did not protect against this.
+The `by-anyone` guard is here to set a warning that we are doing something wrong.
+Typically we never want to use it, unless we have a really good reason to."
+
+"But what if we don't use *any guard whatsoever*?
+Cloudlog will not allow us to do this.  For example, if we forget to place a `by*` guard on `foo-yx`, we get the following error:"
+(fact
+ (macroexpand '(defrule foo-yx [y x]
+                 [:test/foo x y]))
+ => (throws "Rule is insecure. Link 0 is not checked."))
+
+"The same goes for rules with joins:"
+(fact
+ (macroexpand '(defrule secure-timeline [user tweet]
+  [:test/follows user author] (by-anyone)
+  [:test/tweeted author tweet]))
+ => (throws "Rule is insecure. Link 1 is not checked."))
 
 [[:chapter {:title "defclause: Top-Down Logic" :tag "defclause"}]]
 "Regular rules defined using `defrule` define *bottom-up logic*.  Bottom-up logic is applied when facts are added or removed,

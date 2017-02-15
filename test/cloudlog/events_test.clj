@@ -153,14 +153,14 @@ A rule for creating search results can look like this:"
 (declare ticket-by-gender-and-location)
 
 (defrule dating-matches [watch-id ticket-id]
-  [:test/watch watch-id gender loc min-age max-age]
-  [ticket-by-gender-and-location [gender loc] ticket-id age]
+  [:test/watch watch-id gender loc min-age max-age] (by-anyone)
+  [ticket-by-gender-and-location [gender loc] ticket-id age] (by-anyone)
   (when (and (<= age max-age)
              (>= age min-age))))
 
 "`ticket-by-gender-and-location` is an indexing of raw `:test/ticket`, performed by the following rule:"
 (defrule ticket-by-gender-and-location [[gender loc] ticket-id age]
-  [:test/ticket ticket-id gender age loc])
+  [:test/ticket ticket-id gender age loc] (by-anyone))
 
 "People openning tickets on dating services often wish their tickets to be limited to a certain
 set of users.  Similarly, people setting up a watch often wish to keep their preferences secret.

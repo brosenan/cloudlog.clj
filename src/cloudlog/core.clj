@@ -1,7 +1,8 @@
 (ns cloudlog.core
   (:require [pureclj.core :as pureclj]
             [clojure.core.logic :as logic]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [clojure.string :as string]))
 
 (declare generate-rule-func)
 
@@ -41,7 +42,10 @@
 (defmethod process-conds  clojure.lang.ISeq [conds symbols]
   (let [cond (first conds)
         [body meta] (process-conds (rest conds) (propagate-symbols cond symbols))
-        body (seq (concat cond [body]))]
+        body (seq (concat cond [body]))
+        meta (if (string/starts-with? (str (first cond)) "by")
+               (assoc meta :checked true)
+               meta)]
     (if (= (first cond) 'for)
       [`(apply concat ~body) meta]
       ; else
@@ -74,9 +78,18 @@
                                       ~body)))))]
     [func meta]))
 
+(defn validate-rule [metadata]
+  (loop [metadata metadata
+         link 0]
+    (when-not (:checked metadata)
+      (throw (Exception. (str "Rule is insecure. Link " link " is not checked."))))
+    (when (:continuation metadata)
+      (recur (-> metadata :continuation meta) (inc link)))))
+
 (defmacro defrule [rulename args source-fact & body]
   (let [conds (concat body [`[~(keyword (str *ns*) (name rulename)) ~@args]])
         [func meta] (generate-rule-func source-fact conds #{})]
+    (validate-rule meta)
     `(def ~rulename (with-meta ~func ~(merge meta {:ns *ns* :name (str rulename)})))))
 
 (defn append-to-keyword [keywd suffix]
