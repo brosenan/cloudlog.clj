@@ -1,6 +1,7 @@
 (ns cloudlog.events
   (:use [cloudlog.core])
-  (:require [cloudlog.interset :as interset]))
+  (:require [cloudlog.interset :as interset]
+            [clojure.core.async :as async]))
 
 (defn emitter [rulefunc writers & {:keys [link mult readers] :or {link 0
                                                                   mult 1
@@ -35,3 +36,40 @@
                         :mult (:change rule-ev)
                         :readers (:readers rule-ev))]
         (em fact-ev)))))
+
+(defn source-fact-table [rulefunc link]
+  (if (> link 0)
+    (recur (-> rulefunc meta :continuation) (dec link))
+    ; else
+    (-> rulefunc meta :source-fact fact-table)))
+
+
+(defn matcher [rulefunc link db-chan]
+  (let [mult (multiplier rulefunc link)]
+    (fn [ev out-chan]
+      (async/go
+        (let [db-reply-chan (async/chan 1000)]
+          (if (= (:kind ev) :fact)
+            (do
+              (async/>! db-chan [{:kind :rule
+                                  :name (str (fact-table [rulefunc]) "!" (dec link))
+                                  :key (:key ev)}
+                                 db-reply-chan])
+              (loop [rule-ev (async/<! db-reply-chan)]
+                (when rule-ev
+                  (doseq [out-ev (mult rule-ev ev)]
+                    (async/>! out-chan out-ev))
+                  (recur (async/<! db-reply-chan))))
+              (async/close! out-chan))
+            ; else
+            (do
+              (async/>! db-chan [{:kind :fact
+                                  :name (source-fact-table rulefunc link)
+                                  :key (:key ev)}
+                                 db-reply-chan])
+              (loop [fact-ev (async/<! db-reply-chan)]
+                (when fact-ev
+                  (doseq [out-ev (mult ev fact-ev)]
+                    (async/>! out-chan out-ev))
+                  (recur (async/<! db-reply-chan))))
+              (async/close! out-chan))))))))

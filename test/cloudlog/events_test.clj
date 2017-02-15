@@ -2,7 +2,8 @@
   (:use [midje.sweet]
         [cloudlog.core]
         [cloudlog.events]
-        [cloudlog.core_test]))
+        [cloudlog.core_test])
+  (:require [clojure.core.async :as async]))
 
 [[:chapter {:title "Introduction"}]]
 "`defrule` and `defclause` allow users to define logic that defines applications.
@@ -267,3 +268,89 @@ There is no hard guarantee for that.  Hoever, the whole point of using rules it 
 Such rules can be easily converted to [clauses](core.html#defclause), which do not require redundant information to be stored."
 
 [[:chapter {:title "matcher: Matches Rules and Facts" :tag "matcher"}]]
+"[multipliers](#multiplier) apply rules to facts, and expect to be given both as parameters.  However, in most cases
+we are only given one -- a rule or a fact, and we need to apply that rule or that fact to all matching rules and facts.
+These matching rule and fact events are typically stored in some database.
+The database can provide all events that match a combination of `:kind`, `:name` and `:key`."
+
+"As we wish to decouple Cloudlog's implementation from any particular database, we use `core.async` channels to interact
+with the database.  We provide the event to be matched on a channel, along with a channel for the output,
+and in return *someone* provides us with the matching events on the channel we provided, and closes the channel.
+On the other side of the channel there could be an interface to a cloud database, an in-memory cache or a combination
+of the two.  We don't care as long as we get what we need from the other side of the channel."
+
+"A matcher instance is constructed by the `matcher` function, which is given a rule function, a link number and a channel to the database."
+(def db-chan (async/chan 1000))
+(def timeline-matcher (matcher timeline 1 db-chan))
+
+
+[[:section {:title "Matching Rules for Facts"}]]
+"The returned matcher is a function that takes an event and an output channel for the resulting events."
+(def res-chan (async/chan 1000))
+(timeline-matcher (event :fact ":test/tweeted" "bob" ["hello"]) res-chan)
+
+"The matcher will emit a query to the `db-chan`, specifying what it is looking for"
+(def db-request
+ (async/alts!! [db-chan
+                (async/timeout 100)]))
+
+(fact
+ (-> db-request second) => db-chan)
+"The request consists of a pair `[req chan]`, where `req` is a partial event that matches what we are looking for:"
+(fact
+ (-> db-request first first) => {:kind :rule
+                                 :name "cloudlog.core_test/timeline!0"
+                                 :key "bob"})
+
+"And `chan` is the channel on which the database is expected to provide the reply"
+(def reply-chan (-> db-request first second))
+
+"Next, the database emits matching rules on the reply channel, and closes it."
+(async/>!! reply-chan (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"]))
+(async/>!! reply-chan (event :rule "cloudlog.core_test/timeline!0" "bob" ["eve" "bob"]))
+(async/close! reply-chan)
+
+"For each such event the matcher will emit the events obtained by multiplying the fact and the rules."
+(fact
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [(event :fact "cloudlog.core_test/timeline" "alice" ["hello"]) res-chan]
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [(event :fact "cloudlog.core_test/timeline" "eve" ["hello"]) res-chan])
+
+"Finally, the channel needs to be closed."
+(fact
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [nil res-chan])
+
+[[:section {:title "Matching Facts for Rules"}]]
+"A matcher function can accept either a fact event or a rule event."
+(def res-chan (async/chan 1000))
+(timeline-matcher (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"]) res-chan)
+
+"For a rule, the matcher will query the database for matching facts."
+(def db-request
+ (async/alts!! [db-chan
+                (async/timeout 100)]))
+(fact
+ (-> db-request second) => db-chan)
+(fact
+ (-> db-request first first) => {:kind :fact
+                                 :name "test/tweeted"
+                                 :key "bob"})
+(def reply-chan (-> db-request first second))
+
+"Now the database replies fact events."
+(async/>!! reply-chan (event :fact "test/tweeted" "bob" ["hello"]))
+(async/>!! reply-chan (event :fact "test/tweeted" "bob" ["world"]))
+(async/close! reply-chan)
+
+"The results are emitted on the `res-chan`:"
+(fact
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [(event :fact "cloudlog.core_test/timeline" "alice" ["hello"]) res-chan]
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [(event :fact "cloudlog.core_test/timeline" "alice" ["world"]) res-chan]
+ (async/alts!! [res-chan
+                (async/timeout 100)]) => [nil res-chan])
+
+
