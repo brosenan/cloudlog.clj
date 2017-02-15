@@ -21,7 +21,7 @@
         :change (* (:change event) mult)
         :readers (interset/intersection (:readers event) readers)}))))
 
-(defn multiplier [rulefunc index writers]
+(defn multiplier [rulefunc index]
   (let [cont (loop [i index
                     func rulefunc]
                (if (> i 0)
@@ -30,7 +30,7 @@
                  func))]
     (fn [rule-ev fact-ev]
       (let [rulefunc' (cont (cons (:key rule-ev) (:data rule-ev)))
-            em (emitter (with-meta rulefunc' (meta cont)) writers
+            em (emitter (with-meta rulefunc' (meta cont)) (:writers rule-ev)
                         :link index
                         :mult (:change rule-ev)
                         :readers (:readers rule-ev))]

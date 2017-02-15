@@ -118,9 +118,8 @@ To support this, we pass them as metadata on the data."
 (i.e., an event for a fact and a rule with the same key) and producing a collection of events
 that are produced from this combination."
 
-"A multiplier is constructed based on a rule function, a number (>0) representing the link in the rule,
-and a `:writers` set fot the rule."
-(def mult1 (multiplier timeline 1 #{}))
+"A multiplier is constructed based on a rule function, and a number (>0) representing the link in the rule."
+(def mult1 (multiplier timeline 1))
 
 "The returned function takes two arguments: a *rule event* and a matching *fact event*.
 It returns a sequence of events created by this combination."
@@ -208,12 +207,21 @@ conveying Alice's wishes?"
 "The `:readers` set of the resulting events will be an *intersection* of both `:readers` sets, (which
 is actually a [union of the Clojure sets](interset.html#intersection))."
 (fact
- (let [mult (multiplier dating-matches 1 #{})
+ (let [mult (multiplier dating-matches 1)
        ev (first (mult dating-matches-event ticket-by-gender-and-location-event))]
    (:readers ev) => #{:male [:user= "bob"] :long-time-users}))
 "The resulting `:readers` set is an intersection of `:male` and `[:user= \"bob\"]`, which Bob is a member of,
 with `:long-time-users`, which Bob is not a member of.  This places Bob outside the intersection, and therefore
 unable to see the resulting fact (which is what we expect)."
+
+[[:section {:title "Integrity" :tag "integrity"}]]
+"Since rules [take ownership over the resulting events](core.html#integrity), the `:writers` set of events coming out of a multiplier
+must come from the rule event:"
+(fact
+ (let [mult (multiplier timeline 1)]
+   (mult (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"] :writers #{"example.com"})
+         (event :fact ":test/tweeted" "bob" ["hello"] :writers #{[:user= "bob"]}))
+   => [(event :fact "cloudlog.core_test/timeline" "alice" ["hello"] :writers #{"example.com"})]))
 
 [[:section {:title "Timestamps"}]]
 "Events are stored with a primary key that combines `:key` and `:ts`.  Out of these, `:key` is used for [sharding](https://en.wikipedia.org/wiki/Shard_%28database_architecture%29), and `:ts` is used for sorting.
@@ -243,7 +251,7 @@ Each of the input events (the rule and the fact) has a timestamp, so which one s
 Because we want each timestamp to be a real timestamp (from a raw fact event), we need to take
 exactly one of them.  We take the one from the *fact*."
 (fact
- (let [mult (multiplier timeline 1 #{})
+ (let [mult (multiplier timeline 1)
        ev (first (mult (event :rule "cloudlog.core_test/timeline!0" "bob" ["alice" "bob"] :ts 2345)
                        (event :fact ":test/tweeted" "bob" ["hello"] :ts 3456)))]
    (:ts ev) => 3456))
@@ -257,3 +265,5 @@ and hence tweets will overrun one another.
 But what guarantee do we have that if we take the fact's `:ts` we do not get into such a situation?
 There is no hard guarantee for that.  Hoever, the whole point of using rules it to [denormalize](https://en.wikipedia.org/wiki/Denormalization) the data so that it is searchable with different keys.  It is pointless to have a rule that keeps the same `:key`.
 Such rules can be easily converted to [clauses](core.html#defclause), which do not require redundant information to be stored."
+
+[[:chapter {:title "matcher: Matches Rules and Facts" :tag "matcher"}]]
