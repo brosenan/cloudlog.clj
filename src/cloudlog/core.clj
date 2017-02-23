@@ -1,5 +1,5 @@
 (ns cloudlog.core
-  (:require [pureclj.core :as pureclj]
+  (:require [permacode.symbols :as symbols]
             [clojure.core.logic :as logic]
             [clojure.set :as set]
             [clojure.string :as string]))
@@ -11,7 +11,7 @@
   symbols)
 
 (defn binding-symbols [bindings cond]
-  (pureclj/symbols (map bindings (range 0 (count bindings) 2))))
+  (symbols/symbols (map bindings (range 0 (count bindings) 2))))
 
 (defmethod propagate-symbols 'let [cond symbols]
   (set/union symbols (binding-symbols (second cond) cond)))
@@ -31,8 +31,8 @@
       ; Continuation
       (let [[func meta] (generate-rule-func (first conds) (rest conds) symbols)
             key (second target)
-            params (vec (set/intersection symbols (pureclj/symbols func)))
-            missing (set/difference (pureclj/symbols key) symbols)
+            params (vec (set/intersection symbols (symbols/symbols func)))
+            missing (set/difference (symbols/symbols key) symbols)
             meta {:continuation (with-meta `(fn [[~'$key$ ~@params]] ~func) meta)}]
         (when-not (empty? missing)
           (throw (Exception. (str "variables " missing " are unbound in the key for " (first target)))))
@@ -61,7 +61,7 @@
       run)))
 
 (defn generate-rule-func [source-fact conds ext-symbols]
-  (let [symbols (set/difference (pureclj/symbols (rest source-fact)) ext-symbols)
+  (let [symbols (set/difference (symbols/symbols (rest source-fact)) ext-symbols)
         [body meta] (process-conds conds (set/union symbols ext-symbols))
         meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})
         vars (vec symbols)
