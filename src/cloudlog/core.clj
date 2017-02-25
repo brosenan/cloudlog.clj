@@ -1,9 +1,9 @@
 (ns cloudlog.core
   (:require [permacode.symbols :as symbols]
             [permacode.core]
-            [clojure.core.logic :as logic]
             [clojure.set :as set]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [cloudlog.unify :as unify]))
 
 (permacode.core/pure
  (declare generate-rule-func)
@@ -53,15 +53,6 @@
                                         ; else
        [body meta])))
 
- (defmacro norm-run* [vars goal]
-   (let [run `(logic/run* ~vars ~goal)]
-     (if (= (count vars) 1)
-       `(let [~'$res$ ~run]
-          (if (empty? ~'$res$)
-            nil
-            [~'$res$]))
-       run)))
-
  (defn generate-rule-func [source-fact conds ext-symbols]
    (let [symbols (set/difference (symbols/symbols (rest source-fact)) ext-symbols)
          [body meta] (process-conds conds (set/union symbols ext-symbols))
@@ -74,8 +65,7 @@
                        ~body
                        [])
                                         ; vars contains the unbound variables
-                    `(let [~'$poss$ (norm-run* ~vars
-                                               (logic/== ~'$input$ [~@(rest source-fact)]))]
+                    `(let [~'$poss$ ((unify/unify-fn ~vars [~@(rest source-fact)] ~vars) ~'$input$)]
                        (apply concat (for [~vars ~'$poss$] 
                                        ~body)))))]
      [func meta]))
