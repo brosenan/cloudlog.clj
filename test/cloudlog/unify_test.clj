@@ -35,11 +35,10 @@ It evaluates to a function that takes an *input* value and returns a sequence.
    (f [:foo [:bar 3] [:baz 5 -]]) => empty?))
 
 [[:section {:title "Under the Hood"}]]
-"The `at-path` function returns the expression at the given path."
+"The function `at-path` returns a Clojure expression that evaluates a path in a tree.
+For example:"
 (fact
- (let [tree [1 [2 [3 4]] 5]]
-   (at-path tree [0]) => 1
-   (at-path tree [1 1 0])) => 3)
+ (at-path 'tree [1 2 3]) => '(((tree 1) 2) 3))
 
 "`traverse` takes a tree and a predicate function as input and returns a map
 from paths to nodes."
@@ -69,9 +68,9 @@ and returns a list of conditions and a list of bindings."
 (fact
  (conds-and-bindings [] (constantly true)) => [[] []]
  (conds-and-bindings [[[0] 'x] [[1] 'y]] (constantly true))
- => `[[] [~'x (at-path ~'$input$ [0])
-          ~'y (at-path ~'$input$ [1])]]
+ => `[[] [~'x (~'$input$ 0)
+          ~'y (~'$input$ 1)]]
  (conds-and-bindings [[[0] 'x] [[1] "foo"]] symbol?)
- => `[[(= (at-path ~'$input$ [1]) "foo")]
-      [~'x (at-path ~'$input$ [0])]])
+ => `[[(= (~'$input$ 1) "foo")]
+      [~'x (~'$input$ 0)]])
 

@@ -7,7 +7,8 @@
  (defn at-path [tree path]
    (if (empty? path)
      tree
-     (recur (tree (first path)) (rest path))))
+     ; else
+     (at-path `(~tree ~(first path)) (rest path))))
 
  (defn traverse [tree pred & [prefix]]
    (let [prefix (or prefix [])]
@@ -25,9 +26,9 @@
      (let [[conds bindings] (conds-and-bindings (rest traventries) var?)
            [path subtree] (first traventries)]
        (if (var? subtree)
-         [conds `[~subtree (at-path ~'$input$ ~(vec path)) ~@bindings]]
+         [conds `[~subtree ~(at-path '$input$ (vec path)) ~@bindings]]
          ; else
-         [(cons `(= (at-path ~'$input$ ~(vec path)) ~subtree) conds) bindings]))))
+         [(cons `(= ~(at-path '$input$ (vec path)) ~subtree) conds) bindings]))))
  
  (defmacro unify-fn [vars unifiable expr]
    (let [vars (set vars)

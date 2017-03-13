@@ -45,7 +45,7 @@
    (let [cond (first conds)
          [body meta] (process-conds (rest conds) (propagate-symbols cond symbols))
          body (seq (concat cond [body]))
-         meta (if (string/starts-with? (str (first cond)) "by")
+         meta (if (string/starts-with? (name (first cond)) "by")
                 (assoc meta :checked true)
                 meta)]
      (if (= (first cond) 'for)
@@ -57,17 +57,16 @@
    (let [symbols (set/difference (symbols/symbols (rest source-fact)) ext-symbols)
          [body meta] (process-conds conds (set/union symbols ext-symbols))
          meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})
-         vars (vec symbols)
+         vars (set symbols)
+         term-has-vars (fn [term]
+                         (not (empty? (set/intersection (symbols/symbols term) vars))))
+         travmap (unify/traverse (vec (rest source-fact)) (constantly true))
+         [conds bindings] (unify/conds-and-bindings (map identity travmap) term-has-vars)
          func `(fn [~'$input$]
-                 ~(if (empty? vars)
-                                        ; No unbound variables
-                    `(if (= ~'$input$ [~@(rest source-fact)])
-                       ~body
-                       [])
-                                        ; vars contains the unbound variables
-                    `(let [~'$poss$ ((unify/unify-fn ~vars [~@(rest source-fact)] ~vars) ~'$input$)]
-                       (apply concat (for [~vars ~'$poss$] 
-                                       ~body)))))]
+                 (if (and ~@conds)
+                   (let ~bindings ~body)
+                                        ; else
+                    []))]
      [func meta]))
 
  (defn validate-rule [metadata]
