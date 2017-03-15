@@ -3,7 +3,8 @@
             [permacode.core]
             [clojure.set :as set]
             [clojure.string :as string]
-            [cloudlog.unify :as unify]))
+            [cloudlog.unify :as unify]
+            [cloudlog.graph :as graph]))
 
 (permacode.core/pure
  (declare generate-rule-func)
@@ -53,10 +54,19 @@
                                         ; else
        [body meta])))
 
+ (defn fact-name [fact]
+   (if (keyword? fact)
+     fact
+     ; else
+     (if (symbol? fact)
+       `(keyword (-> ~fact meta :ns str) (-> ~fact meta :name))
+       ; else
+       (keyword (-> fact meta :ns str) (-> fact meta name)))))
+ 
  (defn generate-rule-func [source-fact conds ext-symbols]
    (let [symbols (set/difference (symbols/symbols (rest source-fact)) ext-symbols)
          [body meta] (process-conds conds (set/union symbols ext-symbols))
-         meta (merge meta {:source-fact [(first source-fact) (count (rest source-fact))]})
+         meta (merge meta {:source-fact [(fact-name (first source-fact)) (count (rest source-fact))]})
          vars (set symbols)
          term-has-vars (fn [term]
                          (not (empty? (set/intersection (symbols/symbols term) vars))))
@@ -107,9 +117,9 @@
          cont (-> rule meta :continuation)]
      (if cont
        (let [next-rules (map cont after-first)]
-         (into #{} (apply concat (for [next-rule next-rules]
-                                   (simulate* (with-meta next-rule (meta cont)) factmap)))))
-                                        ;else
+         (into #{} (reduce concat (for [next-rule next-rules]
+                                    (simulate* (with-meta next-rule (meta cont)) factmap)))))
+       ;else
        after-first)))
 
  (defn simulate-with [rule & facts]
@@ -130,4 +140,36 @@
       ~body))
 
  (defmacro by-anyone [body]
-   body))
+   body)
+
+ (defn rule-cont [rule]
+   (loop [func rule
+          res nil]
+     (if-let [cont (-> func meta :continuation)]
+       (recur cont (cons func res))
+       ; else
+       (reverse (cons func res)))))
+
+ (defn rule-target-fact [rule]
+   (let [conts (rule-cont rule)]
+     (some identity (map (fn [x] (-> x meta :target-fact)) conts))))
+
+ (defn sort-rules [rules]
+   (let [inv-graph (reduce graph/merge-graph {} (for [rule rules]
+                                                  (let [conts (rule-cont rule)]
+                                                    {(rule-target-fact rule) (set (map (fn [x] (-> x meta :source-fact)) conts))})))
+         inv-sort (graph/toposort inv-graph)
+         target-fact-map (reduce merge {} (for [rule rules]
+                                            (let [conts (rule-cont rule)]
+                                              {(rule-target-fact rule) rule})))]
+     (->> (reverse inv-sort)
+          (map target-fact-map)
+          (filter identity))))
+ 
+ (defn simulate-rules-with [rules & facts]
+   (loop [rules (sort-rules rules)
+          facts (with* facts)]
+     (if (empty? rules)
+       facts
+       ; else
+       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts)))))))

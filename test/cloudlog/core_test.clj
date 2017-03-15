@@ -196,7 +196,7 @@ followed by the values of `w` and `z`:"
        rule-func (cont [3 1 3])]
    (rule-func [4 1])) => [])
 
-[[:section {:title "Derived Facts"}]]
+[[:section {:title "Derived Facts" :tag "derived-facts"}]]
 "Each rule defines a derived fact, i.e., each tuple produced by a rule is stored as a fact.
 The name of this fact is the fully-quaified name of the rule function.
 This fact can then be used in other rules.
@@ -212,9 +212,9 @@ of users identified as \"influencers\", we would probably write a rule of the fo
  (simulate-with trending
                 [:test/influencer "gina"]
                 [:test/influencer "tina"]
-                [timeline "tina" "purple is the new black!"]
-                [timeline "gina" "pink is the new purple!"]
-                [timeline "some-lamo" "orange is the new bananna"])
+                [::timeline "tina" "purple is the new black!"]
+                [::timeline "gina" "pink is the new purple!"]
+                [::timeline "some-lamo" "orange is the new bananna"])
  => #{["purple is the new black!"]
       ["pink is the new purple!"]})
 
@@ -340,9 +340,9 @@ and the output paramter."
 (fact (simulate-with multi-keyword-search
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]
-                     [index-docs "foo" "doc1"]
-                     [index-docs "foo" "doc2"]
-                     [index-docs "hello" "doc5"]
+                     [::index-docs "foo" "doc1"]
+                     [::index-docs "foo" "doc2"]
+                     [::index-docs "hello" "doc5"]
                      [:test/doc "doc1" "Foo goes into a Bar..."]
                      [:test/doc "doc2" "Foo goes into a Pub..."]
                      [:test/doc "doc5" "World peace starts with a small Hello!"])

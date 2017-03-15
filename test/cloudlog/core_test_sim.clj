@@ -64,3 +64,48 @@ and then aggregating the results."
  => #{["alice" "hello"]})
 
 [[:reference {:refer "cloudlog.core/simulate*"}]]
+
+[[:chapter {:title "simulate-rules-with: Perform a simulation Based on a Complete Namespace" :tag "simulate-rules-with"}]]
+"`simulate-with` is useful for testing a single rule. However, sometimes we are interested in testing the integration
+of several rules together.
+`simulate-rules-with` is given a collection of rules (and possibly definitions that are not rules and are ignored),
+and a set of facts.  It extends this set of facts with derived facts that are produced by applying the rules."
+
+"For example, consider the `trending` rule defined (here)[#derived-facts].
+This rule aggregates the timelines of certain *influencers* into a single *trending* timeline."
+
+(fact
+ (let [derived (simulate-rules-with [timeline trending]
+                                    [:test/influencer "alice"]
+                                    [:test/follows "alice" "bob"]
+                                    [:test/tweeted "bob" "hello"])]
+   (derived [:cloudlog.core_test/trending 1]) => #{["hello"]}))
+
+
+"We topologically-sort the rules so the order in which they appear in the call to `simulate-rules-with`
+does not matter."
+(fact
+ (let [derived (simulate-rules-with [trending timeline]
+                                    [:test/influencer "alice"]
+                                    [:test/follows "alice" "bob"]
+                                    [:test/tweeted "bob" "hello"])]
+   (derived [:cloudlog.core_test/trending 1]) => #{["hello"]}))
+
+[[:section {:title "Under the Hood"}]]
+"The key to what `simulate-rules-with` is doing is sorting the given rule functions topologically using [graph/toposort](graph.html#toposort).
+This is done in the `sort-rules` function, which takes a collection of rules and sorts them by dependencies."
+
+(fact
+ (sort-rules [trending timeline]) => [timeline trending])
+
+"Many of the operations here are based on iterating on the continuations of a rule function.
+These are returned by the `rule-cont` function."
+
+"Typically, we are not going to use these functions directly, but rather `map` them to their meta properties:"
+(fact
+ (let [conts (rule-cont timeline)]
+   (map #(-> % meta :source-fact) conts) => [[:test/follows 2] [:test/tweeted 2]]))
+
+"The function `rule-target-fact` returns the target fact of a rule."
+(fact
+ (rule-target-fact timeline) => [:cloudlog.core_test/timeline 2])
