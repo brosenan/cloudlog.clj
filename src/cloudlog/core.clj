@@ -4,7 +4,8 @@
             [clojure.set :as set]
             [clojure.string :as string]
             [cloudlog.unify :as unify]
-            [cloudlog.graph :as graph]))
+            [cloudlog.graph :as graph]
+            [cloudlog.interset :as interset]))
 
 (permacode.core/pure
  (declare generate-rule-func)
@@ -110,18 +111,25 @@
                   arity (-> fact rest count)]
               {[fact-name arity] #{(with-meta (vec (rest fact)) metadata)}}))))
 
- (defn simulate* [rule factmap writer]
+ (defn apply-with-conf [rule readers]
+   (fn [tuple]
+     (let [tuple-readers (-> tuple meta :readers)
+           results (rule tuple)]
+       (for [res results]
+         (with-meta res (merge (meta res) {:readers (interset/intersection readers tuple-readers)}))))))
+
+ (defn simulate* [rule factmap writer & [readers]]
    (let [source-fact (-> rule meta :source-fact)
          after-first (->> (factmap source-fact)
-                          (map rule)
+                          (map (apply-with-conf rule readers))
                           (reduce concat)
-                          (map (fn [x] (with-meta x {:writers #{writer}})))
+                          (map (fn [x] (with-meta x (merge (meta x) {:writers #{writer}}))))
                           (into #{}))
          cont (-> rule meta :continuation)]
      (if cont
-       (let [next-rules (map cont after-first)]
-         (into #{} (reduce concat (for [next-rule next-rules]
-                                    (simulate* (with-meta next-rule (meta cont)) factmap writer)))))
+       (let [next-rules (map (fn [t] [(cont t) (-> t meta :readers)]) after-first)]
+         (into #{} (reduce concat (for [[next-rule next-readers] next-rules]
+                                    (simulate* (with-meta next-rule (meta cont)) factmap writer next-readers)))))
        ;else
        after-first)))
 
@@ -175,4 +183,14 @@
      (if (empty? rules)
        facts
        ; else
-       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer)))))))
+       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer))))))
+
+ (defn fct [f & others]
+   (with-meta f (loop [l others
+                       m {}]
+                  (if (empty? l)
+                    m
+                    ; else
+                    (let [[k v & rest] l]
+                      (recur rest (assoc m k v))))))))
+

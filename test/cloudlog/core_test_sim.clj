@@ -1,7 +1,15 @@
 (ns cloudlog.core_test_sim
   (:use midje.sweet)
   (:use [cloudlog.core])
-  (:use [cloudlog.core_test]))
+  (:use [cloudlog.core_test])
+  (:require [cloudlog.interset :as interset]))
+
+[[:chapter {:title "fct: A Convenience Function to Create Facts" :tag "fct"}]]
+"In the following we will use the `fact` function, which allows us to create facts."
+(fact
+ (let [f (fct [:test/follows "alice" "bob"] :writers #{[:user= "alice"]} :readers #{"foobar"})]
+   f => [:test/follows "alice" "bob"]
+   (meta f) => {:writers #{[:user= "alice"]} :readers #{"foobar"}}))
 
 [[:chapter {:title "simulate-with: Evaluate a Rule based on facts" :tag "simulate-with"}]]
 "We believe in [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as a \"way of life\" in the software world.
@@ -36,6 +44,16 @@ For example:"
                     [:test/tweeted "bob" "hello"])
      first meta :writers) => #{:test})
 
+"The simulation calculates the reader-set for the result.
+Generally, this is the [intersection](interset.html#intersection) of the reader sets of all participating facts."
+(fact
+ (let [X #{:a :b}
+       Y #{:b :c}]
+   (-> (simulate-with timeline :test
+                      (fct [:test/follows "alice" "bob"] :readers X)
+                      (fct [:test/tweeted "bob" "hello"] :readers Y))
+       first meta :readers) => (interset/intersection X Y)))
+
 [[:section {:title "Under the Hood"}]]
 "`simulate-with` is merely a combination of two lower-level functions: `simulate*` and `with*`:"
 
@@ -52,7 +70,7 @@ fact names and arities to sets of value tuples.  For example:"
 
 "`with*` moves metadata placed on facts over to the tuples the fact is converted to."
 (fact
- (let [with-map (with* [(with-meta [:test/baz 1 2 3] {:foo "bar"})])]
+ (let [with-map (with* [(fct [:test/baz 1 2 3] :foo "bar")])]
    (-> (with-map [:test/baz 3]) first meta :foo) => "bar"))
 
 
