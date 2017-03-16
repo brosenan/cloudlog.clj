@@ -110,7 +110,7 @@
                   arity (-> fact rest count)]
               {[fact-name arity] #{(with-meta (vec (rest fact)) metadata)}}))))
 
- (defn simulate* [rule factmap & [writer]]
+ (defn simulate* [rule factmap writer]
    (let [source-fact (-> rule meta :source-fact)
          after-first (->> (factmap source-fact)
                           (map rule)
@@ -169,10 +169,10 @@
           (map target-fact-map)
           (filter identity))))
  
- (defn simulate-rules-with [rules & facts]
+ (defn simulate-rules-with [rules writer & facts]
    (loop [rules (sort-rules rules)
           facts (with* facts)]
      (if (empty? rules)
        facts
        ; else
-       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts)))))))
+       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer)))))))

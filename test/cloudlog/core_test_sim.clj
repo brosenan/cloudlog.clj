@@ -63,12 +63,12 @@ with the rule function to be simulated.
 A simple rule is simulated by applying tuples from the set corresponding to the rule's source-fact,
 and then aggregating the results."
 (fact
- (simulate* foo-yx {[:test/foo 2] #{[1 2] [3 4]}}) => #{[2 1] [4 3]})
+ (simulate* foo-yx {[:test/foo 2] #{[1 2] [3 4]}} :test) => #{[2 1] [4 3]})
 
 "In rules with joins, the continuations are followed."
 (fact
  (simulate* timeline (with* [[:test/follows "alice" "bob"]
-                             [:test/tweeted "bob" "hello"]]))
+                             [:test/tweeted "bob" "hello"]]) :test)
  => #{["alice" "hello"]})
 
 [[:chapter {:title "simulate-rules-with: Perform a simulation Based on a Complete Namespace" :tag "simulate-rules-with"}]]
@@ -81,7 +81,7 @@ and a set of facts.  It extends this set of facts with derived facts that are pr
 This rule aggregates the timelines of certain *influencers* into a single *trending* timeline."
 
 (fact
- (let [derived (simulate-rules-with [timeline trending]
+ (let [derived (simulate-rules-with [timeline trending] :test
                                     [:test/influencer "alice"]
                                     [:test/follows "alice" "bob"]
                                     [:test/tweeted "bob" "hello"])]
@@ -91,11 +91,22 @@ This rule aggregates the timelines of certain *influencers* into a single *trend
 "We topologically-sort the rules so the order in which they appear in the call to `simulate-rules-with`
 does not matter."
 (fact
- (let [derived (simulate-rules-with [trending timeline]
+ (let [derived (simulate-rules-with [trending timeline] :test
                                     [:test/influencer "alice"]
                                     [:test/follows "alice" "bob"]
                                     [:test/tweeted "bob" "hello"])]
    (derived [:cloudlog.core_test/trending 1]) => #{["hello"]}))
+
+"The second argument (writer group identifier) has the same meaning as in `simulate-with`."
+(fact
+ (let [derived (simulate-rules-with [trending timeline] :test
+                                    [:test/influencer "alice"]
+                                    [:test/follows "alice" "bob"]
+                                    [:test/tweeted "bob" "hello"])]
+   (-> (derived [:cloudlog.core_test/trending 1])
+       first
+       meta
+       :writers) => #{:test}))
 
 [[:section {:title "Under the Hood"}]]
 "The key to what `simulate-rules-with` is doing is sorting the given rule functions topologically using [graph/toposort](graph.html#toposort).
