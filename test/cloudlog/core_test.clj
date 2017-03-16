@@ -209,7 +209,7 @@ of users identified as \"influencers\", we would probably write a rule of the fo
 
 "Now we can simulate our rule (using [simulate-with](#simulate-with)):"
 (fact
- (simulate-with trending
+ (simulate-with trending :test
                 [:test/influencer "gina"]
                 [:test/influencer "tina"]
                 [::timeline "tina" "purple is the new black!"]
@@ -252,7 +252,7 @@ Below is a secure version of the `timeline` rule, that only takes into account t
 "Now, if both Eve and Alice create tweets alegedly made by Alice, 
 Bob (who follows Alice) will only see the ones genuinly made by Alice."
 (fact
- (simulate-with secure-timeline
+ (simulate-with secure-timeline :test
                 (with-meta [:test/follows "bob" "alice"] {:writers #{[:user= "bob"]}})
                 (with-meta [:test/tweeted "alice" "Alice loves Bob"] {:writers #{[:user= "alice"]}})
                 (with-meta [:test/tweeted "alice" "Alice hates Bob"] {:writers #{[:user= "eve"]}}))
@@ -264,7 +264,7 @@ of having unauthorized updates take effect. For example, in the `secure-timeline
 we checked the integrity of tweets, but \"forgot\" to check the integrity of following relationships.
 This mistake can help Eve get messages through to Bob although he does not follow her:"
 (fact
- (simulate-with secure-timeline
+ (simulate-with secure-timeline :test
                 (with-meta [:test/follows "bob" "eve"] {:writers #{[:user= "eve"]}})
                 (with-meta [:test/tweeted "eve" "Alice hates Bob"] {:writers #{[:user= "eve"]}}))
  => #{["bob" "Alice hates Bob"]})
@@ -337,7 +337,7 @@ preceded by a `$unique$` parameter, which identifies a specific question (hence 
 
 "In this case, the answer's arity is also `2` -- the unique identifier that matches the question
 and the output paramter."
-(fact (simulate-with multi-keyword-search
+(fact (simulate-with multi-keyword-search :test
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]
                      [::index-docs "foo" "doc1"]

@@ -11,14 +11,16 @@ key to successful software projects.  App developers using Cloudlog should be no
 
 We therefore provide the `simulate-with` function, which allows rules to be tested independently of
 the system implementing Cloudlog, without having to load data to databases, launch clusters etc."
+
 [[:section {:title "simulate-with"}]]
 "The `simulate-with` function accepts the following arguments:
-1. A single rule function to be simulated, and
-2. Zero or more facts, making up the test environmnet for the simulation.
+1. A single rule function to be simulated,
+2. A group identifier to be placed as the [writer-set](#integrity) for derived facts coming out of this rule, and
+3. Zero or more facts, making up the test environmnet for the simulation.
 It returns a set of tuples, representing the different values the rule gets given the facts.
 For example:"
 (fact
- (simulate-with timeline
+ (simulate-with timeline :test
                 [:test/follows "alice" "bob"]
                 [:test/follows "alice" "charlie"]
                 [:test/tweeted "bob" "hello"]
@@ -26,6 +28,13 @@ For example:"
                 [:test/tweeted "david" "boo"])
  => #{["alice" "hello"]
       ["alice" "hi"]})
+
+"Resulting tuples are given a writer-set containing the given group identifier."
+(fact
+ (-> (simulate-with timeline :test
+                    [:test/follows "alice" "bob"]
+                    [:test/tweeted "bob" "hello"])
+     first meta :writers) => #{:test})
 
 [[:section {:title "Under the Hood"}]]
 "`simulate-with` is merely a combination of two lower-level functions: `simulate*` and `with*`:"

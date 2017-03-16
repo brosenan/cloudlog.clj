@@ -110,20 +110,23 @@
                   arity (-> fact rest count)]
               {[fact-name arity] #{(with-meta (vec (rest fact)) metadata)}}))))
 
- (defn simulate* [rule factmap]
+ (defn simulate* [rule factmap & [writer]]
    (let [source-fact (-> rule meta :source-fact)
-         input-set (factmap source-fact)
-         after-first (into #{} (apply concat (map rule input-set)))
+         after-first (->> (factmap source-fact)
+                          (map rule)
+                          (reduce concat)
+                          (map (fn [x] (with-meta x {:writers #{writer}})))
+                          (into #{}))
          cont (-> rule meta :continuation)]
      (if cont
        (let [next-rules (map cont after-first)]
          (into #{} (reduce concat (for [next-rule next-rules]
-                                    (simulate* (with-meta next-rule (meta cont)) factmap)))))
+                                    (simulate* (with-meta next-rule (meta cont)) factmap writer)))))
        ;else
        after-first)))
 
- (defn simulate-with [rule & facts]
-   (simulate* rule (with* facts)))
+ (defn simulate-with [rule writer & facts]
+   (simulate* rule (with* facts) writer))
 
  (defmulti fact-table (fn [[name arity]] (class name)))
 
