@@ -277,14 +277,14 @@ Cloudlog will not allow us to do this.  For example, if we forget to place a `by
 (fact
  (macroexpand '(defrule foo-yx [y x]
                  [:test/foo x y]))
- => (throws "Rule is insecure. Link 0 is not checked."))
+ => (throws "Rule is insecure. :test/foo is not checked."))
 
 "The same goes for rules with joins:"
 (fact
  (macroexpand '(defrule secure-timeline [user tweet]
                  [:test/follows user author] (by-anyone)
                  [:test/tweeted author tweet]))
- => (throws "Rule is insecure. Link 1 is not checked."))
+ => (throws "Rule is insecure. :test/tweeted is not checked."))
 
 [[:chapter {:title "defclause: Top-Down Logic" :tag "defclause"}]]
 "Regular rules defined using `defrule` define *bottom-up logic*.  Bottom-up logic is applied when facts are added or removed,

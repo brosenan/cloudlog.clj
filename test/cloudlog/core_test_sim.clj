@@ -26,9 +26,9 @@ For example:"
                 [:test/tweeted "david" "boo"])
  => #{["alice" "hello"]
       ["alice" "hi"]})
+
 [[:section {:title "Under the Hood"}]]
 "`simulate-with` is merely a combination of two lower-level functions: `simulate*` and `with*`:"
-[[:reference {:refer "cloudlog.core/simulate-with"}]]
 
 [[:subsection {:title "with*"}]]
 "The `with` is replaced with a call to the `with*` function, which translates a *sequence of facts* to a map from
@@ -46,7 +46,6 @@ fact names and arities to sets of value tuples.  For example:"
  (let [with-map (with* [(with-meta [:test/baz 1 2 3] {:foo "bar"})])]
    (-> (with-map [:test/baz 3]) first meta :foo) => "bar"))
 
-[[:reference {:refer "cloudlog.core/with*"}]]
 
 [[:subsection {:title "simulate*"}]]
 "This map is then given as a parameter to `simulate*` -- the function that the `simulate` macro evaluates to, along
@@ -62,8 +61,6 @@ and then aggregating the results."
  (simulate* timeline (with* [[:test/follows "alice" "bob"]
                              [:test/tweeted "bob" "hello"]]))
  => #{["alice" "hello"]})
-
-[[:reference {:refer "cloudlog.core/simulate*"}]]
 
 [[:chapter {:title "simulate-rules-with: Perform a simulation Based on a Complete Namespace" :tag "simulate-rules-with"}]]
 "`simulate-with` is useful for testing a single rule. However, sometimes we are interested in testing the integration

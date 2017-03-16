@@ -83,7 +83,7 @@
    (loop [metadata metadata
           link 0]
      (when-not (:checked metadata)
-       (permacode.core/error "Rule is insecure. Link " link " is not checked."))
+       (permacode.core/error "Rule is insecure. " ((:source-fact metadata) 0) " is not checked."))
      (when (:continuation metadata)
        (recur (-> metadata :continuation meta) (inc link)))))
 
