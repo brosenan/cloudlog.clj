@@ -1,7 +1,8 @@
 (ns cloudlog.core_test_sim
   (:use midje.sweet)
   (:use [cloudlog.core])
-  (:use [cloudlog.core_test])
+  (:use [cloudlog.core_test]
+        [clojure.pprint])
   (:require [cloudlog.interset :as interset]))
 
 [[:chapter {:title "fct: A Convenience Function to Create Facts" :tag "fct"}]]
@@ -126,6 +127,13 @@ does not matter."
        meta
        :writers) => #{:test}))
 
+"The rule collection can include elements that are not rules, which are ignored."
+(fact
+ (let [derived (simulate-rules-with [1 "foo" timeline inc] :test
+                                    [:test/follows "alice" "bob"]
+                                    [:test/tweeted "bob" "hello"])]
+   (derived [:cloudlog.core_test/timeline 2]) => #{["alice" "hello"]}))
+
 [[:section {:title "Under the Hood"}]]
 "The key to what `simulate-rules-with` is doing is sorting the given rule functions topologically using [graph/toposort](graph.html#toposort).
 This is done in the `sort-rules` function, which takes a collection of rules and sorts them by dependencies."
@@ -144,3 +152,19 @@ These are returned by the `rule-cont` function."
 "The function `rule-target-fact` returns the target fact of a rule."
 (fact
  (rule-target-fact timeline) => [:cloudlog.core_test/timeline 2])
+
+[[:chapter {:title "run-query: Applies a Clause on the Facts" :tag "run-query"}]]
+"Eventually, users query the state of the application through [clauses](#defclause).
+`run-query` takes the result produced by `simulate-rules-with`, and applies a collection
+of clauses on it, starting with a given query.
+It returns the query results."
+(fact
+ (let [rules (map (fn [[k v]] @v) (ns-publics 'cloudlog.core_test))]
+   (->
+    (simulate-rules-with rules :test
+                         (fct [:test/doc 100 "This is a song about love."])
+                         (fct [:test/doc 200 "This is a rant about politics."])
+                         (fct [:test/doc 200 "This is a rant about love."])
+                         (fct [:test/doc 300 "This is a doc about nothing."]))
+    (run-query rules (fct [:test/multi-keyword-search ["rant" "politics"]]) 1))
+   => #{["This is a rant about politics."]}))

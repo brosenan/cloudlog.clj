@@ -308,8 +308,8 @@ The following clause does just that."
   :test/multi-keyword-search [keywords] [text]
   (let [keywords (map clojure.string/lower-case keywords)
         first-kw (first keywords)])
-  [index-docs first-kw id]
-  [:test/doc id text]
+  [index-docs first-kw id] (by :test)
+  [:test/doc id text] (by-anyone)
   (let [lc-text (clojure.string/lower-case text)])
   (when (every? #(clojure.string/includes? lc-text %) (rest keywords))))
 
@@ -340,9 +340,9 @@ and the output paramter."
 (fact (simulate-with multi-keyword-search :test
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]
-                     [::index-docs "foo" "doc1"]
-                     [::index-docs "foo" "doc2"]
-                     [::index-docs "hello" "doc5"]
+                     (fct [::index-docs "foo" "doc1"] :writers #{:test})
+                     (fct [::index-docs "foo" "doc2"] :writers #{:test})
+                     (fct [::index-docs "hello" "doc5"] :writers #{:test})
                      [:test/doc "doc1" "Foo goes into a Bar..."]
                      [:test/doc "doc2" "Foo goes into a Pub..."]
                      [:test/doc "doc5" "World peace starts with a small Hello!"])

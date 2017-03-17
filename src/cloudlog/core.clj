@@ -99,8 +99,9 @@
 
  (defmacro defclause [clausename pred args-in args-out & body]
    (let [source-fact `[~(append-to-keyword pred "?") ~'$unique$ ~@args-in]
-         conds (concat body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
+         conds (concat `[(by-anyone)] body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
          [func meta] (generate-rule-func source-fact conds #{})]
+     (validate-rule meta)
      `(def ~clausename (with-meta ~func ~(merge meta {:ns *ns* :name (str clausename)})))))
 
  (defn with* [seq]
@@ -176,14 +177,15 @@
      (->> (reverse inv-sort)
           (map target-fact-map)
           (filter identity))))
+
+ (defn simulate-rules-with* [rules writer facts]
+      (if (empty? rules)
+        facts
+        ; else
+        (recur (rest rules) writer (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer)))))
  
  (defn simulate-rules-with [rules writer & facts]
-   (loop [rules (sort-rules rules)
-          facts (with* facts)]
-     (if (empty? rules)
-       facts
-       ; else
-       (recur (rest rules) (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer))))))
+   (simulate-rules-with* (sort-rules rules) writer (with* facts)))
 
  (defn fct [f & others]
    (with-meta f (loop [l others
@@ -192,5 +194,17 @@
                     m
                     ; else
                     (let [[k v & rest] l]
-                      (recur rest (assoc m k v))))))))
+                      (recur rest (assoc m k v)))))))
+
+ (defn run-query [facts rules query arity]
+   (let [query-head (first query)
+         query-body (rest query)
+         key [(append-to-keyword query-head "?") (inc (count (rest query)))]
+         rules (filter (fn [rule] (= (-> rule meta :source-fact) key)) rules)
+         facts (assoc facts key #{(vec (cons :unique-id query-body))})
+         facts (simulate-rules-with* rules nil facts)]
+     (->> [(append-to-keyword query-head "!") (inc arity)]
+          facts
+          (map rest)
+          set))))
 
