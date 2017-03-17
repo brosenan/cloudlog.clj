@@ -155,16 +155,26 @@ These are returned by the `rule-cont` function."
 
 [[:chapter {:title "run-query: Applies a Clause on the Facts" :tag "run-query"}]]
 "Eventually, users query the state of the application through [clauses](#defclause).
-`run-query` takes the result produced by `simulate-rules-with`, and applies a collection
-of clauses on it, starting with a given query.
-It returns the query results."
+`run-query` takes a collection of rule functions, a query, its output arity, 
+a writer identity (intended to be the identity of the application),
+a reader set (the identity of whom is making the query),
+and any number of facts.  It returs a set of tuples returned from this query."
 (fact
  (let [rules (map (fn [[k v]] @v) (ns-publics 'cloudlog.core_test))]
-   (->
-    (simulate-rules-with rules :test
-                         (fct [:test/doc 100 "This is a song about love."])
-                         (fct [:test/doc 200 "This is a rant about politics."])
-                         (fct [:test/doc 200 "This is a rant about love."])
-                         (fct [:test/doc 300 "This is a doc about nothing."]))
-    (run-query rules (fct [:test/multi-keyword-search ["rant" "politics"]]) 1))
+   (run-query rules
+              (fct [:test/multi-keyword-search ["rant" "politics"]]) 1 :test #{}
+              (fct [:test/doc 100 "This is a song about love."])
+              (fct [:test/doc 200 "This is a rant about politics."])
+              (fct [:test/doc 200 "This is a rant about love."])
+              (fct [:test/doc 300 "This is a doc about nothing."]))
    => #{["This is a rant about politics."]}))
+
+"The query result will not include elements the user performing the query is not allowed to see."
+(fact
+ (let [rules (map (fn [[k v]] @v) (ns-publics 'cloudlog.core_test))]
+   (run-query rules
+              (fct [:test/multi-keyword-search ["this" "sentence"]]) 1 :test #{:me}
+              (fct [:test/doc 100 "This is a sentence"] :readers interset/universe)
+              (fct [:test/doc 200 "This is another sentence"] :readers #{:someone-else}))
+   => #{["This is a sentence"]}))
+

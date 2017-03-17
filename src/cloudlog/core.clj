@@ -196,15 +196,19 @@
                     (let [[k v & rest] l]
                       (recur rest (assoc m k v)))))))
 
- (defn run-query [facts rules query arity]
+ (defn preserve-meta [func]
+   (fn [t] (with-meta (func t) (meta t))))
+ 
+ (defn run-query [rules query arity writer readers & facts]
    (let [query-head (first query)
          query-body (rest query)
          key [(append-to-keyword query-head "?") (inc (count (rest query)))]
-         rules (filter (fn [rule] (= (-> rule meta :source-fact) key)) rules)
+         facts (with* facts)
          facts (assoc facts key #{(vec (cons :unique-id query-body))})
-         facts (simulate-rules-with* rules nil facts)]
+         facts (simulate-rules-with* rules writer facts)]
      (->> [(append-to-keyword query-head "!") (inc arity)]
           facts
-          (map rest)
+          (map (preserve-meta rest))
+          (filter (fn [t] (interset/subset? readers (-> t meta :readers))))
           set))))
 
