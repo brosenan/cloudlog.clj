@@ -100,8 +100,9 @@
 
  (defmacro defclause [clausename pred args-in args-out & body]
    (let [source-fact `[~(append-to-keyword pred "?") ~'$unique$ ~@args-in]
-         conds (concat `[(by-anyone)] body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
-         [func meta] (generate-rule-func source-fact conds #{})]
+         conds (concat body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
+         [func meta] (generate-rule-func source-fact conds #{})
+         meta (assoc meta :checked true)] ; The query is assumed to be checked
      (validate-rule meta)
      `(def ~clausename (with-meta ~func ~(merge meta {:ns *ns* :name (str clausename)})))))
 
