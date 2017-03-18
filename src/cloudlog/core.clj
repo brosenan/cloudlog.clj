@@ -49,11 +49,12 @@
          body (seq (concat cond [body]))
          meta (if (string/starts-with? (name (first cond)) "by")
                 (assoc meta :checked true)
-                meta)]
-     (if (= (first cond) 'for)
-       [`(apply concat ~body) meta]
-                                        ; else
-       [body meta])))
+                meta)
+         body (if (= (first cond) 'for)
+                body
+                ; else
+                [body])]
+     [`(reduce concat ~body) meta]))
 
  (defn fact-name [fact]
    (if (keyword? fact)
