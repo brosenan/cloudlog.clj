@@ -205,9 +205,7 @@
    (let [query-head (first query)
          query-body (rest query)
          key [(append-to-keyword query-head "?") (inc (count (rest query)))]
-         facts (with* facts)
-         facts (assoc facts key #{(vec (cons :unique-id query-body))})
-         facts (simulate-rules-with* rules writer facts)]
+         facts (apply simulate-rules-with rules writer (vec (concat [(first key) :unique-id] query-body)) facts)]
      (->> [(append-to-keyword query-head "!") (inc arity)]
           facts
           (map (preserve-meta rest))
