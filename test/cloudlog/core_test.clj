@@ -311,7 +311,8 @@ The following clause does just that."
   [index-docs first-kw id] (by :test)
   [:test/doc id text] (by-anyone)
   (let [lc-text (clojure.string/lower-case text)])
-  (when (every? #(clojure.string/includes? lc-text %) (rest keywords))))
+  (when (every? #(clojure.string/includes? lc-text %)
+                (rest keywords))))
 
 "`multi-keyword-search` is the name of the function to be created (similar to a rule function).
 `:test/multi-keyword-search` is the *predicate* to be associated with this clause.

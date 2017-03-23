@@ -141,6 +141,19 @@ This is done in the `sort-rules` function, which takes a collection of rules and
 (fact
  (sort-rules [trending timeline]) => [timeline trending])
 
+"Sorting should be arbitrary in the case where two rules (or clauses) have the same target fact, as in the case of clauses
+sharing a predicate, as follows:"
+(defclause foo-1
+  :test/foo [a] [b]
+  (let [b (inc a)]))
+
+(defclause foo-2
+  :test/foo [a] [b]
+  (let [b (* a 2)]))
+
+(fact
+ (set (sort-rules [foo-1 foo-2])) => #{foo-1 foo-2})
+
 "Many of the operations here are based on iterating on the continuations of a rule function.
 These are returned by the `rule-cont` function."
 
@@ -178,3 +191,10 @@ and any number of facts.  It returs a set of tuples returned from this query."
               (fct [:test/doc 200 "This is another sentence"] :readers #{:someone-else}))
    => #{["This is a sentence"]}))
 
+"`run-query` aggregates the results coming from different clauses of the same prediate.
+For example, the following holds with the above definitions of `foo-1` and `foo-2`:"
+
+(fact
+ (run-query [foo-1 foo-2]
+            (fct [:test/foo 2]) 1 :test #{})
+ => #{[3] [4]})

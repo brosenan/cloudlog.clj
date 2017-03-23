@@ -173,18 +173,19 @@
                                                   (let [conts (rule-cont rule)]
                                                     {(rule-target-fact rule) (set (map (fn [x] (-> x meta :source-fact)) conts))})))
          inv-sort (graph/toposort inv-graph)
-         target-fact-map (reduce merge {} (for [rule rules]
-                                            (let [conts (rule-cont rule)]
-                                              {(rule-target-fact rule) rule})))]
+         target-fact-map (reduce (partial merge-with set/union) {} (for [rule rules]
+                                                              (let [conts (rule-cont rule)]
+                                                                {(rule-target-fact rule) #{rule}})))]
      (->> (reverse inv-sort)
           (map target-fact-map)
+          (reduce concat)
           (filter identity))))
 
  (defn simulate-rules-with* [rules writer facts]
       (if (empty? rules)
         facts
         ; else
-        (recur (rest rules) writer (assoc facts (rule-target-fact (first rules)) (simulate* (first rules) facts writer)))))
+        (recur (rest rules) writer (merge-with set/union facts {(rule-target-fact (first rules)) (simulate* (first rules) facts writer)}))))
  
  (defn simulate-rules-with [rules writer & facts]
    (simulate-rules-with* (sort-rules rules) writer (with* facts)))
