@@ -253,9 +253,9 @@ Below is a secure version of the `timeline` rule, that only takes into account t
 Bob (who follows Alice) will only see the ones genuinly made by Alice."
 (fact
  (simulate-with secure-timeline :test
-                (fct [:test/follows "bob" "alice"] :writers #{[:user= "bob"]})
-                (fct [:test/tweeted "alice" "Alice loves Bob"] :writers #{[:user= "alice"]})
-                (fct [:test/tweeted "alice" "Alice hates Bob"] :writers #{[:user= "eve"]}))
+                (f [:test/follows "bob" "alice"] :writers #{[:user= "bob"]})
+                (f [:test/tweeted "alice" "Alice loves Bob"] :writers #{[:user= "alice"]})
+                (f [:test/tweeted "alice" "Alice hates Bob"] :writers #{[:user= "eve"]}))
  => #{["bob" "Alice loves Bob"]})
 
 "Now we come back to `by-anyone` and why we had to use it all over the place.
@@ -265,8 +265,8 @@ we checked the integrity of tweets, but \"forgot\" to check the integrity of fol
 This mistake can help Eve get messages through to Bob although he does not follow her:"
 (fact
  (simulate-with secure-timeline :test
-                (fct [:test/follows "bob" "eve"] :writers #{[:user= "eve"]})
-                (fct [:test/tweeted "eve" "Alice hates Bob"] :writers #{[:user= "eve"]}))
+                (f [:test/follows "bob" "eve"] :writers #{[:user= "eve"]})
+                (f [:test/tweeted "eve" "Alice hates Bob"] :writers #{[:user= "eve"]}))
  => #{["bob" "Alice hates Bob"]})
 "Both facts were submitted (legally) by Eve.  The only flaw was in our logic -- we did not protect against this.
 The `by-anyone` guard is here to set a warning that we are doing something wrong.
@@ -305,7 +305,7 @@ retrieve full texts and only accept those in which the other keywords appear.
 
 The following clause does just that."
 (defclause multi-keyword-search
-  :test/multi-keyword-search [keywords] [text]
+  [:test/multi-keyword-search keywords -> text]
   (let [keywords (map clojure.string/lower-case keywords)
         first-kw (first keywords)])
   [index-docs first-kw id] (by :test)
@@ -341,9 +341,9 @@ and the output paramter."
 (fact (simulate-with multi-keyword-search :test
                      [:test/multi-keyword-search? 1234 ["hello" "world"]]
                      [:test/multi-keyword-search? 2345 ["foo" "bar"]]
-                     (fct [::index-docs "foo" "doc1"] :writers #{:test})
-                     (fct [::index-docs "foo" "doc2"] :writers #{:test})
-                     (fct [::index-docs "hello" "doc5"] :writers #{:test})
+                     (f [::index-docs "foo" "doc1"] :writers #{:test})
+                     (f [::index-docs "foo" "doc2"] :writers #{:test})
+                     (f [::index-docs "hello" "doc5"] :writers #{:test})
                      [:test/doc "doc1" "Foo goes into a Bar..."]
                      [:test/doc "doc2" "Foo goes into a Pub..."]
                      [:test/doc "doc5" "World peace starts with a small Hello!"])

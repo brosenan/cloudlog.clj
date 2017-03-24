@@ -98,8 +98,13 @@
  (defn append-to-keyword [keywd suffix]
    (keyword (namespace keywd) (str (name keywd) suffix)))
 
- (defmacro defclause [clausename pred args-in args-out & body]
-   (let [source-fact `[~(append-to-keyword pred "?") ~'$unique$ ~@args-in]
+ (defn parse-target-form [[name & args]]
+   (let [[in out] (split-with (partial not= '->) args)]
+     [name in (rest out)]))
+
+ (defmacro defclause [clausename target-form & body]
+   (let [[pred args-in args-out] (parse-target-form target-form)
+         source-fact `[~(append-to-keyword pred "?") ~'$unique$ ~@args-in]
          conds (concat body [`[~(append-to-keyword pred "!") ~'$unique$ ~@args-out]])
          [func meta] (generate-rule-func source-fact conds #{})
          meta (assoc meta :checked true)] ; The query is assumed to be checked
@@ -190,7 +195,7 @@
  (defn simulate-rules-with [rules writer & facts]
    (simulate-rules-with* (sort-rules rules) writer (with* facts)))
 
- (defn fct [f & others]
+ (defn f [f & others]
    (with-meta f (loop [l others
                        m {}]
                   (if (empty? l)

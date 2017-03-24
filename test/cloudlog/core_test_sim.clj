@@ -5,10 +5,10 @@
         [clojure.pprint])
   (:require [cloudlog.interset :as interset]))
 
-[[:chapter {:title "fct: A Convenience Function to Create Facts" :tag "fct"}]]
+[[:chapter {:title "f: A Convenience Function to Create Facts" :tag "f"}]]
 "In the following we will use the `fact` function, which allows us to create facts."
 (fact
- (let [f (fct [:test/follows "alice" "bob"] :writers #{[:user= "alice"]} :readers #{"foobar"})]
+ (let [f (f [:test/follows "alice" "bob"] :writers #{[:user= "alice"]} :readers #{"foobar"})]
    f => [:test/follows "alice" "bob"]
    (meta f) => {:writers #{[:user= "alice"]} :readers #{"foobar"}}))
 
@@ -51,8 +51,8 @@ Generally, this is the [intersection](interset.html#intersection) of the reader 
  (let [X #{:a :b}
        Y #{:b :c}]
    (-> (simulate-with timeline :test
-                      (fct [:test/follows "alice" "bob"] :readers X)
-                      (fct [:test/tweeted "bob" "hello"] :readers Y))
+                      (f [:test/follows "alice" "bob"] :readers X)
+                      (f [:test/tweeted "bob" "hello"] :readers Y))
        first meta :readers) => (interset/intersection X Y)))
 
 [[:section {:title "Under the Hood"}]]
@@ -71,7 +71,7 @@ fact names and arities to sets of value tuples.  For example:"
 
 "`with*` moves metadata placed on facts over to the tuples the fact is converted to."
 (fact
- (let [with-map (with* [(fct [:test/baz 1 2 3] :foo "bar")])]
+ (let [with-map (with* [(f [:test/baz 1 2 3] :foo "bar")])]
    (-> (with-map [:test/baz 3]) first meta :foo) => "bar"))
 
 
@@ -144,11 +144,11 @@ This is done in the `sort-rules` function, which takes a collection of rules and
 "Sorting should be arbitrary in the case where two rules (or clauses) have the same target fact, as in the case of clauses
 sharing a predicate, as follows:"
 (defclause foo-1
-  :test/foo [a] [b]
+  [:test/foo a -> b]
   (let [b (inc a)]))
 
 (defclause foo-2
-  :test/foo [a] [b]
+  [:test/foo a -> b]
   (let [b (* a 2)]))
 
 (fact
@@ -175,20 +175,20 @@ and any number of facts.  It returs a set of tuples returned from this query."
 (fact
  (let [rules (map (fn [[k v]] @v) (ns-publics 'cloudlog.core_test))]
    (run-query rules
-              (fct [:test/multi-keyword-search ["rant" "politics"]]) 1 :test #{}
-              (fct [:test/doc 100 "This is a song about love."])
-              (fct [:test/doc 200 "This is a rant about politics."])
-              (fct [:test/doc 200 "This is a rant about love."])
-              (fct [:test/doc 300 "This is a doc about nothing."]))
+              (f [:test/multi-keyword-search ["rant" "politics"]]) 1 :test #{}
+              (f [:test/doc 100 "This is a song about love."])
+              (f [:test/doc 200 "This is a rant about politics."])
+              (f [:test/doc 200 "This is a rant about love."])
+              (f [:test/doc 300 "This is a doc about nothing."]))
    => #{["This is a rant about politics."]}))
 
 "The query result will not include elements the user performing the query is not allowed to see."
 (fact
  (let [rules (map (fn [[k v]] @v) (ns-publics 'cloudlog.core_test))]
    (run-query rules
-              (fct [:test/multi-keyword-search ["this" "sentence"]]) 1 :test #{:me}
-              (fct [:test/doc 100 "This is a sentence"] :readers interset/universe)
-              (fct [:test/doc 200 "This is another sentence"] :readers #{:someone-else}))
+              (f [:test/multi-keyword-search ["this" "sentence"]]) 1 :test #{:me}
+              (f [:test/doc 100 "This is a sentence"] :readers interset/universe)
+              (f [:test/doc 200 "This is another sentence"] :readers #{:someone-else}))
    => #{["This is a sentence"]}))
 
 "`run-query` aggregates the results coming from different clauses of the same prediate.
@@ -196,5 +196,5 @@ For example, the following holds with the above definitions of `foo-1` and `foo-
 
 (fact
  (run-query [foo-1 foo-2]
-            (fct [:test/foo 2]) 1 :test #{})
+            (f [:test/foo 2]) 1 :test #{})
  => #{[3] [4]})
